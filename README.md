@@ -70,11 +70,13 @@ code // 如果已被 VS Code 占用可用 `coder`
 
 注意：若已有 `code` 命令（如 VS Code），CLI 也会安装 `coder`。冲突时使用 `coder`。
 
-**认证方式**（二选一）：
+**认证方式**（三选一）：
 - **ChatGPT 登录**（Plus/Pro/Team；使用你计划可用的模型）
-  - 运行 `code` 选择 “Sign in with ChatGPT”
+  - 运行 `code` 选择 "Sign in with ChatGPT"
 - **API Key**（按量计费）
   - 设置 `export OPENAI_API_KEY=xyz` 然后运行 `code`
+- **第三方激活器**（如 codex-activator）
+  - 本项目特别支持通过激活器使用代理服务，详见下方「激活器集成」章节
 
 ### 安装 Claude 与 Gemini（可选）
 
@@ -264,6 +266,41 @@ model_reasoning_summary = "detailed"
 - `OPENAI_API_KEY`：使用 API Key 而非 ChatGPT 登录
 - `OPENAI_BASE_URL`：使用备用 API 端点
 - `OPENAI_WIRE_API`：强制内置 OpenAI 提供商使用 `chat` 或 `responses` 接口
+
+&ensp;
+## 激活器集成
+
+本项目特别支持第三方激活器（如 `codex-activator`），可实现一次激活即在多个版本间共享认证。
+
+### 工作原理
+
+激活器将配置写入 `~/.codex/config.toml`，包含自定义 `model_provider` 和环境变量。本项目通过同步该配置来复用激活器的认证。
+
+### 快速配置
+
+```bash
+# 1. 安装并运行激活器
+codex-activator
+
+# 2. 同步配置（添加到 ~/.zshrc 实现自动同步）
+if [ -f ~/.codex/config.toml ]; then
+  cp ~/.codex/config.toml ~/.code/config.toml 2>/dev/null
+fi
+
+# 3. 重新加载环境
+source ~/.zshrc
+
+# 4. 验证
+code exec "echo hello"
+```
+
+### 更换激活码
+
+1. 运行 `codex-activator` 输入新激活码
+2. 打开新终端（配置自动同步）
+3. 直接使用 `code`
+
+详细说明请参阅 [docs/activator-integration.md](docs/activator-integration.md)。
 
 &ensp;
 ## FAQ

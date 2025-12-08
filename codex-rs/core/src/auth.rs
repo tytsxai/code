@@ -291,7 +291,15 @@ impl CodexAuth {
     }
 }
 
+/// Environment variable for OpenAI API key authentication.
+/// This is the standard way to authenticate with the official OpenAI API.
+/// For third-party activators/proxies, use custom `model_providers` config with `env_key`.
 pub const OPENAI_API_KEY_ENV_VAR: &str = "OPENAI_API_KEY";
+
+/// Alternative environment variable for Codex-specific API key.
+/// Primarily used for internal testing and programmatic usage.
+/// Third-party activators may use their own env vars (e.g., CRS_OAI_KEY)
+/// configured via `model_providers.<name>.env_key` in config.toml.
 pub const CODEX_API_KEY_ENV_VAR: &str = "CODEX_API_KEY";
 
 pub fn read_openai_api_key_from_env() -> Option<String> {

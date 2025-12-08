@@ -45,6 +45,21 @@ pub enum WireApi {
 }
 
 /// Serializable representation of a provider definition.
+///
+/// Custom providers can be defined in `~/.code/config.toml` under `[model_providers.<name>]`.
+/// This enables integration with third-party activators and proxy services.
+///
+/// # Example (config.toml)
+/// ```toml
+/// model_provider = "my-provider"
+///
+/// [model_providers.my-provider]
+/// name = "My Provider"
+/// base_url = "https://proxy.example.com/openai"
+/// wire_api = "responses"
+/// requires_openai_auth = true
+/// env_key = "MY_API_KEY"  # Environment variable containing the API token
+/// ```
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct ModelProviderInfo {
     /// Friendly display name.
@@ -52,6 +67,8 @@ pub struct ModelProviderInfo {
     /// Base URL for the provider's OpenAI-compatible API.
     pub base_url: Option<String>,
     /// Environment variable that stores the user's API key for this provider.
+    /// Third-party activators can use custom env vars (e.g., CRS_OAI_KEY)
+    /// and the value will be read at runtime and used for authentication.
     pub env_key: Option<String>,
 
     /// Optional instructions to help the user get a valid value for the

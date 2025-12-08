@@ -113,3 +113,38 @@ ssh -L 1455:localhost:1455 <user>@<remote-host>
 ```
 
 然后在该 SSH 会话中运行 `code` 并选择 "Sign in with ChatGPT"。提示时，打开打印出的 URL（形如 `http://localhost:1455/...`）到本地浏览器，流量会被隧道到远程服务器。
+
+## 第三方激活器集成
+
+如果你使用第三方激活器（如 `codex-activator`）来管理认证，Code CLI 支持通过自定义 `model_providers` 配置来使用激活器提供的代理服务。
+
+### 快速配置
+
+激活器通常会将配置写入 `~/.codex/config.toml`。要让 Code CLI 使用相同配置，需要同步到 `~/.code/`：
+
+```bash
+# 手动同步
+cp ~/.codex/config.toml ~/.code/config.toml
+
+# 或设置自动同步（添加到 ~/.zshrc）
+if [ -f ~/.codex/config.toml ]; then
+  cp ~/.codex/config.toml ~/.code/config.toml 2>/dev/null
+fi
+```
+
+### 工作原理
+
+激活器配置示例：
+
+```toml
+model_provider = "crs"
+
+[model_providers.crs]
+name = "crs"
+base_url = "https://proxy.example.com/openai"  # 代理服务器地址
+wire_api = "responses"
+requires_openai_auth = true
+env_key = "CRS_OAI_KEY"  # 认证 token 的环境变量名
+```
+
+详细配置说明请参阅 [激活器集成指南](activator-integration.md)。

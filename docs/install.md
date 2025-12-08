@@ -30,5 +30,25 @@ GitHub Release 包含名为 `code` 的 [DotSlash](https://dotslash-cli.com/) shi
  ./target/debug/code -- "explain this codebase to me"
 ```
 
+### 安装到本地（可选）
+
+构建成功后，可将二进制安装到 `~/.local/bin` 以便全局使用：
+
+```bash
+# 创建目录并复制二进制
+mkdir -p ~/.local/bin
+cp ./.code/working/_target-cache/code/*/code-rs/dev-fast/code ~/.local/bin/code
+chmod +x ~/.local/bin/code
+
+# 确保 PATH 包含 ~/.local/bin（添加到 ~/.zshrc 或 ~/.bashrc）
+export PATH="$HOME/.local/bin:$PATH"
+
+# 验证安装
+code --version
+```
+
+> [!TIP]
+> 如果使用激活器（如 codex-activator），需确保配置同步。详见 [激活器集成](activator-integration.md)。
+
 > [!NOTE]
 > 项目将编译警告视为错误。唯一必需的本地检查是 `./build-fast.sh`；除非特别要求，否则不要运行 `rustfmt`/`clippy`。
