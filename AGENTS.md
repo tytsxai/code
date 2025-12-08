@@ -1,144 +1,131 @@
 # Rust/codex-rs
 
-In the codex-rs folder where the rust code lives:
+`codex-rs` 目录存放 Rust 代码：
 
-- Crate names are prefixed with `codex-`. For example, the `core` folder's crate is named `codex-core`
-- When using format! and you can inline variables into {}, always do that.
-- Treat `codex-rs` as a read-only mirror of `openai/codex:main`; edit Rust sources under `code-rs` instead.
+- crate 名统一以 `codex-` 为前缀，例如 `core` 目录里的 crate 叫 `codex-core`。
+- 能在 `format!` 里直接内插变量时，直接用 `{}`。
+- 将 `codex-rs` 视为 `openai/codex:main` 的只读镜像；实际修改请在 `code-rs` 下进行。
 
-Completion/build step
+完成度/构建要求
 
-- Always validate using `./build-fast.sh` from the repo root. This is the single required check and must pass cleanly.
-- `./build-fast.sh` can take 20+min to run from a cold cache!!! Please use long timeout when running `./build-fast.sh` or waiting for it to complete.
-- Policy: All errors AND all warnings must be fixed before you’re done. Treat any compiler warning as a failure and address it (rename unused vars with `_`, remove `mut`, delete dead code, etc.).
-- Do not run additional format/lint/test commands on completion (e.g., `just fmt`, `just fix`, `cargo test`) unless explicitly requested for a specific task.
-- ***NEVER run rustfmt***
-- Before pushing to `main`, run `./pre-release.sh` to mirror the release preflight (dev-fast build, CLI smokes, workspace nextest).
+- 唯一必跑的检查是仓库根目录的 `./build-fast.sh`，必须干净通过。
+- 冷缓存运行 `./build-fast.sh` 可能 20+ 分钟，请用足够长的超时等待其完成。
+- 视任何编译 warning 为失败，全部修掉（如改名为 `_`、去掉多余的 `mut`、删死代码）。
+- 未被要求时不要额外跑 fmt/lint/test（如 `just fmt`、`just fix`、`cargo test`）。
+- ***禁止运行 rustfmt***
+- 推到 `main` 前先跑 `./pre-release.sh`，对齐发布前的预检（dev-fast 构建、CLI 冒烟、workspace nextest）。
 
-Optional regression checks (recommended when touching the Rust workspace):
+可选回归检查（改动 Rust workspace 推荐跑）
 
-- `cargo nextest run --no-fail-fast` — runs all workspace tests with the TUI helpers automatically enabled. The suite is green after the resume fixtures/git-init fallback updates; older Git builds may print a warning when falling back from `--initial-branch`, but tests still pass.
-- Focused sweeps stay quick and green: `cargo test -p code-tui --features test-helpers`, `cargo test -p code-cloud-tasks --tests`, and `cargo test -p mcp-types --tests`.
+- `cargo nextest run --no-fail-fast`：启用 TUI helper 的全量测试；resume/git-init 兼容后应全绿，旧 Git 可能打印 `--initial-branch` 回退警告但不影响通过。
+- 快速聚焦：`cargo test -p code-tui --features test-helpers`、`cargo test -p code-cloud-tasks --tests`、`cargo test -p mcp-types --tests`。
 
-When debugging regressions or bugs, write a failing test (or targeted reproduction script) first and confirm it captures the issue before touching code—if it can’t fail, you can’t be confident the fix works.
+调试回归/缺陷时，先写能失败的测试或复现脚本并确认它会红，再动代码——测不红无法证明修复有效。
 
-## Documentation hygiene
+## 文档规范
 
-- Keep docs clean, clear, and current; prune stale instructions instead of piling on caveats.
-- Avoid excessive verbosity; prioritize concise guidance over long narratives.
-- Do not document minor or non-core features; focus on system-critical flows and expectations.
-- Never commit temporary "working" docs, plans, or scratch notes.
+- 保持文档简洁、清晰、最新；删除陈旧内容，不要堆叠免责声明。
+- 少讲废话，以简明指引为主。
+- 不记录次要/非核心功能；聚焦关键流程与期望。
+- 不要提交临时“工作”文档、计划或草稿。
 
-## Strict Ordering In The TUI History
+## TUI 历史严格顺序
 
-The TUI enforces strict, per‑turn ordering for all streamed content. Every
-stream insert (Answer or Reasoning) must be associated with a stable
-`(request_ordinal, output_index, sequence_number)` key provided by the model.
+TUI 对流式内容按轮次严格排序。每条流式插入（Answer 或 Reasoning）都必须带模型提供的稳定键 `(request_ordinal, output_index, sequence_number)`。
 
-- A stream insert MUST carry a non‑empty stream id. The UI seeds an order key
-  for `(kind, id)` from the event's `OrderMeta` before any insert.
-- The TUI WILL NOT insert streaming content without a stream id. Any attempt to
-  insert without an id is dropped with an error log to make the issue visible
-  during development.
+- 流式插入必须带非空 stream id。UI 会基于事件的 `OrderMeta` 在插入前播种 `(kind, id)` 的排序键。
+- 没有 stream id 的流式内容不会被插入，开发期会以错误日志暴露。
 
-## Commit Messages
+## 提交信息
 
-- Review staged changes before every commit: `git --no-pager diff --staged --stat` (and skim `git --no-pager diff --staged` if needed).
-- Write a descriptive subject that explains what changed and why. Avoid placeholders like "chore: commit local work".
-- Prefer Conventional Commits with an optional scope: `feat(tui/history): …`, `fix(core/exec): …`, `docs(agents): …`.
-- Keep the subject ≤ 72 chars; add a short body if rationale or context helps future readers.
-- Use imperative, present tense: "add", "fix", "update" (not "added", "fixes").
-- For merge commits, skip custom prefixes like `merge(main<-origin/main):`. Use a clear subject such as `Merge origin/main: <what changed and how conflicts were resolved>`.
+- 每次提交前先检查暂存区：`git --no-pager diff --staged --stat`（必要时再看 `git --no-pager diff --staged`）。
+- 主题需描述改了什么、为何改，避免 “chore: commit local work” 这类占位符。
+- 优先用带可选 scope 的 Conventional Commit：如 `feat(tui/history): …`、`fix(core/exec): …`、`docs(agents): …`。
+- 主题 ≤ 72 字符；若背景有帮助，可写简短 body。
+- 语气用祈使/现在时：“add”“fix”“update”，不要用过去式。
+- 合并提交不要自造前缀（如 `merge(main<-origin/main):`），用清晰主题描述：`Merge origin/main: <what changed and how conflicts were resolved>`。
 
-Examples:
+示例：
 
 - `feat(tui/history): show exit code and duration for Exec cells`
 - `fix(core/codex): handle SIGINT in on_exec_command_begin to avoid orphaned child`
 - `docs(agents): clarify commit-message expectations`
 
-## How to Git Push
+## 如何推送
 
-### Merge-and-Push Policy (Do Not Rebase)
+### 合并式推送策略（不要 rebase）
 
-When the user asks you to "push" local work:
+当需要 “push” 本地工作时：
 
-- Never rebase in this flow. Do not use `git pull --rebase` or attempt to replay local commits.
-- Prefer a simple merge of `origin/main` into the current branch, keeping our local history intact.
-- If the remote only has trivial release metadata changes (e.g., `codex-cli/package.json` version bumps), adopt the remote version for those files and keep ours for everything else unless the user specifies otherwise.
-- If in doubt or if conflicts touch non-trivial areas, pause and ask before resolving.
+- 不要 rebase；不要用 `git pull --rebase` 或重放提交。
+- 优先把 `origin/main` 合并到当前分支，保留本地历史。
+- 若远端只改了发布元数据（如 `codex-cli/package.json` 版本号），默认保留本地改动，仅对这些文件采用远端版本，除非用户另有要求。
+- 若有疑虑或冲突涉及非平凡区域，先停下询问。
 
-Quick procedure (merge-only):
+合并流程（无自动提交）：
 
-- Commit your local work first:
-  - Review: `git --no-pager diff --stat` and `git --no-pager diff`
-  - Stage + commit: `git add -A && git commit -m "<descriptive message of local changes>"`
-- Fetch remote: `git fetch origin`
-- Merge without auto-commit: `git merge --no-ff --no-commit origin/main` (stops before committing so you can choose sides)
-- Resolve policy:
-  - Default to ours: `git checkout --ours .`
-  - Take remote for trivial package/version files as needed, e.g.: `git checkout --theirs codex-cli/package.json`
-- Stage and commit the merge with a descriptive message, e.g.:
+- 先提交本地改动：
+  - 检查 diff：`git --no-pager diff --stat` 和 `git --no-pager diff`
+  - 暂存并提交：`git add -A && git commit -m "<descriptive message of local changes>"`
+- 拉取远端：`git fetch origin`
+- 合并但不提交：`git merge --no-ff --no-commit origin/main`（停在可手动选择阶段）
+- 取舍策略：
+  - 默认用 ours：`git checkout --ours .`
+  - 版本/包文件如 `codex-cli/package.json` 这类可用 theirs：`git checkout --theirs codex-cli/package.json`
+- 暂存并提交合并，如：
   - `git add -A && git commit -m "Merge origin/main: adopt remote version bumps; keep ours elsewhere (<areas>)"`
-- Run `./build-fast.sh` and then `git push`
+- 跑 `./build-fast.sh` 后再 `git push`
 
-## Command Execution Architecture
+## 命令执行架构
 
-The command execution flow in Codex follows an event-driven pattern:
+Codex 的命令执行是事件驱动的：
 
-1. **Core Layer** (`codex-core/src/codex.rs`):
-   - `on_exec_command_begin()` initiates command execution
-   - Creates `EventMsg::ExecCommandBegin` events with command details
+1. **Core 层**（`codex-core/src/codex.rs`）：
+   - `on_exec_command_begin()` 发起命令执行
+   - 创建包含命令详情的 `EventMsg::ExecCommandBegin`
 
-2. **TUI Layer** (`codex-tui/src/chatwidget.rs`):
-   - `handle_codex_event()` processes execution events
-   - Manages `RunningCommand` state for active commands
-   - Creates `HistoryCell::Exec` for UI rendering
+2. **TUI 层**（`codex-tui/src/chatwidget.rs`）：
+   - `handle_codex_event()` 处理执行事件
+   - 管理活跃命令的 `RunningCommand` 状态
+   - 创建用于 UI 渲染的 `HistoryCell::Exec`
 
-3. **History Cell** (`codex-tui/src/history_cell.rs`):
-   - `new_active_exec_command()` - Creates cell for running command
-   - `new_completed_exec_command()` - Updates with final output
-   - Handles syntax highlighting via `ParsedCommand`
+3. **History Cell**（`codex-tui/src/history_cell.rs`）：
+   - `new_active_exec_command()` 创建运行中命令的 cell
+   - `new_completed_exec_command()` 在结束时更新
+   - 通过 `ParsedCommand` 处理语法高亮
 
-This architecture separates concerns between execution logic (core), UI state management (chatwidget), and rendering (history_cell).
+该架构将执行逻辑（core）、UI 状态（chatwidget）与渲染（history_cell）分离。
 
-### Auto Drive Escape Handling
+### Auto Drive 的 Esc 处理
 
-- All Auto Drive escape routing lives in `code-rs/tui/src/chatwidget.rs`. The
-  `ChatWidget::auto_should_handle_global_esc` helper decides whether the global
-  Esc handler in `app.rs` should defer to Auto Drive, and
-  `ChatWidget::handle_key_event` owns the actual stop / pause behaviour. When
-  you need to tweak Esc semantics, update those two locations together.
-- The approval pane must *never* swallow Esc. `code-rs/tui/src/bottom_pane/auto_coordinator_view.rs`
-  intentionally lets Esc (and the other approval shortcuts) bubble back to the
-  chat widget; keep this contract intact when editing the view layer.
-- Avoid adding additional Esc handlers elsewhere for Auto Drive flows. Doing
-  so breaks the modal-first ordering in `app.rs` and prevents users from
-  reliably stopping a run.
+- Auto Drive 的 Esc 分发都在 `code-rs/tui/src/chatwidget.rs`：`ChatWidget::auto_should_handle_global_esc` 决定全局 Esc 是否让位给 Auto Drive，`ChatWidget::handle_key_event` 负责停止/暂停。调整 Esc 语义时两个地方一起改。
+- 审批面板绝不拦截 Esc；`code-rs/tui/src/bottom_pane/auto_coordinator_view.rs` 会让 Esc（和其他审批快捷键）冒泡回聊天窗口，改视图层时保持此约定。
+- 避免在其他地方新增 Auto Drive 的 Esc 处理，否则会打乱 `app.rs` 的模态优先级，导致无法可靠停止运行。
 
-## Writing New UI Regression Tests
+## 编写新的 UI 回归测试
 
-- Start with `make_chatwidget_manual()` (or `make_chatwidget_manual_with_sender()`) to build a `ChatWidget` in isolation with in-memory channels.
-- Simulate user input by defining a small enum (`ScriptStep`) and feeding key events via `chat.handle_key_event()`; see `run_script()` in `tests.rs` for a ready-to-use helper that also pumps `AppEvent`s.
-- After the scripted interaction, render with a `ratatui::Terminal`/`TestBackend`, then use `buffer_to_string()` (wraps `strip_ansi_escapes`) to normalize ANSI output before asserting.
-- Prefer snapshot assertions (`assert_snapshot!`) or rich string comparisons so UI regressions are obvious. Keep snapshots deterministic by trimming trailing space and driving commit ticks just like the existing tests do.
-- When adding fixtures or updating snapshots, gate rewrites behind an opt-in env var (e.g., `UPDATE_IDEAL=1`) so baseline refreshes remain explicit.
+- 从 `make_chatwidget_manual()`（或 `make_chatwidget_manual_with_sender()`）开始，构建带内存通道的 `ChatWidget`。
+- 用小枚举（如 `ScriptStep`）喂 `chat.handle_key_event()` 模拟输入；`tests.rs` 里的 `run_script()` 提供现成 helper 并驱动 `AppEvent`。
+- 交互后用 `ratatui::Terminal`/`TestBackend` 渲染，再用 `buffer_to_string()`（包装 `strip_ansi_escapes`）规范化 ANSI 输出再断言。
+- 优先用快照断言（`assert_snapshot!`）或富字符串对比，方便发现回归。保持确定性：修剪行尾空格，按现有测试的节奏推进 commit tick。
+- 新增或更新快照时，用显式开关（如 `UPDATE_IDEAL=1`）控制重写。
 
-## VT100 Snapshot Harness
+## VT100 快照工具
 
-- The VT100 harness lives under `code-rs/tui/tests/vt100_chatwidget_snapshot.rs`. It renders the live `ChatWidget` UI into a `Terminal<VT100Backend>` so snapshots capture the exact PTY output the user sees (including frame chrome, composer rows, and streaming inserts).
-- Use `ChatWidgetHarness` helpers from `code_tui::test_helpers` to seed history events and drain `AppEvent`s. Call `render_chat_widget_to_vt100(width, height)` for a single frame, or `render_chat_widget_frames_to_vt100(&[(w,h), ...])` to simulate successive draws while streaming.
-- The harness now exports `layout_metrics()` so tests can assert scroll offsets and viewport heights without spelunking through private fields.
-- Snapshots are deterministic: tests set `CODEX_TUI_FAKE_HOUR=12` automatically so greeting text (“What can I code for you today?”) doesn’t oscillate. If you need a different hour in a test, override the env var before constructing the harness.
-- To add a new scenario, push history/events onto the harness, call `render_*_to_vt100`, and either `insta::assert_snapshot!` the frame(s) or manually assert string contents. For multi-frame streaming, push deltas/events first, then capture frames in the order the UI would display them.
-- Run all VT100 snapshots via:
+- VT100 工具位于 `code-rs/tui/tests/vt100_chatwidget_snapshot.rs`，把 live `ChatWidget` 渲染到 `Terminal<VT100Backend>`，捕获用户在 PTY 看到的完整输出（含框架、输入行、流式插入）。
+- 使用 `code_tui::test_helpers` 的 `ChatWidgetHarness` 预置历史/事件并消费 `AppEvent`。单帧用 `render_chat_widget_to_vt100(width, height)`，多帧流式用 `render_chat_widget_frames_to_vt100(&[(w,h), ...])`。
+- 工具暴露 `layout_metrics()`，可断言滚动偏移与视口高度，无需访问私有字段。
+- 快照确定性：测试自动设 `CODEX_TUI_FAKE_HOUR=12` 避免问候语波动；如需其他时间，构造前重写 env。
+- 新场景：推送历史/事件，再调用渲染；可用 `insta::assert_snapshot!` 或手动断言字符串。多帧时先推事件再按 UI 顺序捕获帧。
+- 跑全部 VT100 快照：
   - `cargo test -p code-tui --test vt100_chatwidget_snapshot --features test-helpers -- --nocapture`
-- When you intentionally change rendering, review the `.snap.new` files that appear in `code-rs/tui/tests/snapshots/` and accept them with `cargo insta review` / `cargo insta accept` (limit to this test where possible).
+- 有意改渲染时，查看 `code-rs/tui/tests/snapshots/` 下出现的 `.snap.new`，用 `cargo insta review` / `cargo insta accept`（尽量仅限此测试）接受。
 
-### Monitor Release Workflows After Pushing
+### 监控发布流水线
 
-- Use `scripts/wait-for-gh-run.sh` to follow GitHub Actions releases without spamming manual `gh` commands.
-- Typical release check right after a push: `scripts/wait-for-gh-run.sh --workflow Release --branch main`.
-- If you already know the run ID (e.g., from webhook output), run `scripts/wait-for-gh-run.sh --run <run-id>`.
-- Adjust the poll cadence via `--interval <seconds>` (defaults to 8). The script exits 0 on success and 1 on failure, so it can gate local automation.
-- Pass `--failure-logs` to automatically dump logs for any job that does not finish successfully.
-- Dependencies: GitHub CLI (`gh`) and `jq` must be available in `PATH`.
+- 用 `scripts/wait-for-gh-run.sh` 跟踪 GitHub Actions 的 release，避免手动反复跑 `gh`。
+- 推送后常用：`scripts/wait-for-gh-run.sh --workflow Release --branch main`。
+- 已知 run id 时：`scripts/wait-for-gh-run.sh --run <run-id>`。
+- 通过 `--interval <seconds>` 调整轮询频率（默认 8）。成功退出码 0，失败 1，可用于本地自动化。
+- 加 `--failure-logs` 自动 dump 失败任务的日志。
+- 依赖：PATH 里需要 GitHub CLI（`gh`）和 `jq`。
