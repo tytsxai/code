@@ -1,117 +1,75 @@
-# Slash Commands
+# 斜杠命令
 
-The Code CLI supports a set of slash commands you can type at the start of the
-composer input. These commands provide quick actions, toggles, or expand into
-full prompts. This document lists all built‑in commands and what they do.
+Code CLI 支持在输入框开头输入的斜杠命令，用于快捷操作、开关或自动展开为完整提示。本文列出所有内置命令及其作用。
 
-Notes
+注意
 
-- Commands are shown in the TUI’s slash popup; the order below matches the UI.
-- Commands marked “prompt‑expanding” transform your input into a full prompt and
-  typically kick off multi‑agent flows.
-- Some commands accept arguments; if required, usage is shown in parentheses.
+- 命令会显示在 TUI 的斜杠弹窗中，以下顺序与 UI 一致。
+- 标注为“prompt‑expanding”的命令会将输入转换成完整提示，通常会触发多智能体流程。
+- 部分命令接受参数；如为必填，使用方式会在括号中给出。
 
-## Navigation & Session
+## 导航与会话
 
-- `/browser`: open internal browser.
-- `/chrome`: connect to your Chrome browser.
-- `/new`: start a new chat during a conversation.
-- `/resume`: resume a past session for this folder.
-- `/quit`: exit Code.
-- `/logout`: log out of Code.
-- `/login`: manage Code sign-ins (select, add, or disconnect accounts).
-- `/settings [section]`: open the settings panel. Optional section argument
-  jumps directly to `model`, `theme`, `agents`, `auto`, `review`, `validation`,
-  `limits`, `chrome`, `mcp`, or `notifications`.
+- `/browser`：打开内置浏览器。
+- `/chrome`：连接到你的 Chrome 浏览器。
+- `/new`：在对话中开始新聊天。
+- `/resume`：恢复此文件夹的过去会话。
+- `/quit`：退出 Code。
+- `/logout`：登出。
+- `/login`：管理 Code 登录（选择、添加或断开账号）。
+- `/settings [section]`：打开设置面板。可选 section 直接跳到 `model`、`theme`、`agents`、`auto`、`review`、`validation`、`limits`、`chrome`、`mcp` 或 `notifications`。
 
-## Workspace & Git
+## 工作区与 Git
 
-- `/init`: create an `AGENTS.md` file with instructions for Code.
-- `/diff`: show `git diff` (including untracked files).
-- `/undo`: open a snapshot picker so you can restore workspace files to a
-  previous Code snapshot and optionally rewind the conversation to that point.
-- `/branch [task]`: create a worktree branch and switch to it. If a
-  task/description is provided, it is used when naming the branch. Must be run
-  from the repository root (not inside another branch worktree). Set
-  `CODE_BRANCH_COPY_CACHES=1` (legacy: `CODEX_BRANCH_COPY_CACHES=1`) to mirror
-  `node_modules` and Rust build caches into the worktree; otherwise no cache
-  directories are copied automatically.
-- `/merge`: merge the current worktree branch back into the default branch and
-  remove the worktree. Run this from inside the worktree created by `/branch`.
-- `/push`: tell Code to commit, push, and monitor workflows with guarded
-  instructions. Skips cleanup or GitHub monitoring steps automatically when the
-  workspace is already clean or required tooling/files are missing.
-- `/review [focus]`: without arguments, opens a review picker so you can audit
-  the workspace, a specific commit, compare against another branch, or enter
-  custom instructions. With a focus argument, skips the picker and uses your
-  text directly. Configure Auto Resolve and the max re-reviews (defaults to 5)
-  from `/settings review` when you want Code to rerun fixes and follow-up
-  checks automatically.
-- `/cloud`: browse Code Cloud tasks, view details, apply patches, and create
-  new tasks from the TUI.
-- `/cmd <name>`: run a project command defined for the current workspace.
+- `/init`：创建包含 Code 指南的 `AGENTS.md`。
+- `/diff`：显示 `git diff`（包含未跟踪文件）。
+- `/undo`：打开快照选择器，可将工作区文件恢复到某个 Code 快照，并可选回溯对话至该点。
+- `/branch [task]`：创建工作树分支并切换。如提供任务/描述，会用于分支命名。必须在仓库根目录运行（不要在其他工作树内）。设置 `CODE_BRANCH_COPY_CACHES=1`（旧版 `CODEX_BRANCH_COPY_CACHES=1`）可将 `node_modules` 和 Rust 构建缓存镜像到工作树；否则不会自动复制缓存目录。
+- `/merge`：将当前工作树分支合并回默认分支并删除该工作树。需在 `/branch` 创建的工作树内运行。
+- `/push`：让 Code 按受控流程提交、推送并监控工作流。若工作区已干净或缺少必需工具/文件，会自动跳过清理或 GitHub 监控步骤。
+- `/review [focus]`：无参数时打开审查选择器，可审计工作区、特定提交、与其他分支对比或输入自定义指令。有 focus 参数时跳过选择器直接使用你的文本。需要自动修复并重复检查时，可在 `/settings review` 配置 Auto Resolve 与最大复审次数（默认为 5）。
+- `/cloud`：浏览 Code Cloud 任务、查看详情、应用补丁并在 TUI 中创建新任务。
+- `/cmd <name>`：运行当前工作区定义的项目命令。
 
-## UX & Display
+## 体验与显示
 
-- `/theme`: customize the app theme.
-- `/verbosity (high|medium|low)`: change text verbosity.
-- `/model`: choose your default model.
-- `/reasoning (minimal|low|medium|high)`: change reasoning effort.
-- `/prompts`: show example prompts.
-- `/status`: show current session configuration and token usage.
-- `/limits`: adjust session limits and visualize hourly and weekly rate-limit
-  usage.
-- `/update`: check the installed version, detect available upgrades, and open a
-  guided upgrade terminal that runs the installer interactively when possible.
-- `/notifications [status|on|off]`: manage notification settings. Without
-  arguments, shows the notifications panel. With arguments: `status` shows
-  current config, `on` enables all, `off` disables all.
-- `/mcp [status|on|off <name>|add]`: manage MCP servers. Without arguments,
-  shows all servers with toggle controls. With arguments: `status` lists
-  servers, `on <name>` enables, `off <name>` disables, and `add` starts the new
-  server workflow.
-- `/validation [status|on|off|<tool> (on|off)]`: inspect or toggle validation
-  harness settings.
+- `/theme`：自定义应用主题。
+- `/verbosity (high|medium|low)`：调整文本详尽程度。
+- `/model`：选择默认模型。
+- `/reasoning (minimal|low|medium|high)`：调整推理力度。
+- `/prompts`：显示示例提示。
+- `/status`：查看当前会话配置与 token 用量。
+- `/limits`：调整会话限制并可视化小时/周限流使用情况。
+- `/update`：检查已安装版本、发现可用升级，并在可能时开启交互式安装器的引导升级终端。
+- `/notifications [status|on|off]`：管理通知设置。无参数时显示通知面板；参数 `status` 显示当前配置，`on` 全开，`off` 全关。
+- `/mcp [status|on|off <name>|add]`：管理 MCP 服务器。无参数时显示所有服务器并可切换；参数 `status` 列出服务器，`on <name>` 开启，`off <name>` 关闭，`add` 启动新服务器配置流程。
+- `/validation [status|on|off|<tool> (on|off)]`：查看或切换验证工具设置。
 
-## Search & Mentions
+## 搜索与提及
 
-- `/mention`: mention a file (opens the file search for quick insertion).
+- `/mention`：提及文件（打开文件搜索以快速插入）。
 
-## Performance & Agents
+## 性能与 Agents
 
-- `/perf (on|off|show|reset)`: performance tracing controls.
-- `/agents`: configure agents and subagent commands (including autonomous
-  follow-ups and observer status; available in dev, dev-fast, and perf builds).
-- `/auto [goal]`: start the maintainer-style auto coordinator. If no goal is
-  provided it defaults to "review the git log for recent changes and come up
-  with sensible follow up work".
+- `/perf (on|off|show|reset)`：性能追踪控制。
+- `/agents`：配置 agents 与子智能体命令（含自动跟进与观察者状态；在 dev、dev-fast、perf 版本可用）。
+- `/auto [goal]`：启动维护者风格的自动协调器。若未提供目标，默认值为“review the git log for recent changes and come up with sensible follow up work”。
 
-## Prompt‑Expanding (Multi‑Agent)
+## Prompt‑Expanding（多智能体）
 
-These commands expand into full prompts (generated by `code-core`) and
-typically start multiple agents. They require a task/problem description.
+以下命令会展开成完整提示（由 `code-core` 生成），通常会启动多个智能体。需要提供任务/问题描述。
 
-- `/plan <task>`: create a comprehensive plan (multiple agents). Prompt‑expanding.
-- `/solve <problem>`: solve a challenging problem (multiple agents). Prompt‑expanding.
-- `/code <task>`: perform a coding task (multiple agents). Prompt‑expanding.
+- `/plan <task>`：创建完整计划（多智能体）。Prompt‑expanding。
+- `/solve <problem>`：解决挑战性问题（多智能体）。Prompt‑expanding。
+- `/code <task>`：执行编码任务（多智能体）。Prompt‑expanding。
 
-## Development‑Only
+## 仅开发版
 
-- `/demo`: populate the chat history with assorted sample cells (available in
-  dev and perf builds for UI testing).
-- `/test-approval`: test approval request (available in debug builds only).
+- `/demo`：填充聊天历史以各种示例单元（用于 dev 与 perf 构建的 UI 测试）。
+- `/test-approval`：测试审批请求（仅 debug 构建）。
 
-Implementation Notes
+实现说明
 
-- The authoritative list of commands is defined in
-  `code-rs/tui/src/slash_command.rs` (the `SlashCommand` enum). When adding a
-  new command, please update this document to keep the UI and docs in sync.
-- Prompt formatting for `/plan`, `/solve`, and `/code` lives in
-  `code-rs/core/src/slash_commands.rs`.
-  When no `[[agents]]` are configured, the orchestrator advertises the
-  following model slugs to the LLM for multi-agent runs: `code-gpt-5.1`,
-  `claude-sonnet-4.5`, `claude-opus-4.1`, `gemini-3-pro`,
-  `gemini-2.5-pro`, `gemini-2.5-flash`, `qwen-3-coder`, `code-gpt-5.1-codex`, and
-  `code-gpt-5.1-codex-mini` (with `cloud-gpt-5.1-codex` gated by
-  `CODE_ENABLE_CLOUD_AGENT_MODEL`). You can replace or pin this set via
-  `[[agents]]` or per-command `[[subagents.commands]].agents`.
+- 权威命令列表定义在 `code-rs/tui/src/slash_command.rs`（`SlashCommand` 枚举）。添加新命令时请更新本文档以保持 UI 与文档一致。
+- `/plan`、`/solve`、`/code` 的提示格式在 `code-rs/core/src/slash_commands.rs`。
+  当未配置 `[[agents]]` 时，编排器会向 LLM 宣告以下模型 slug 用于多智能体运行：`code-gpt-5.1`、`claude-sonnet-4.5`、`claude-opus-4.1`、`gemini-3-pro`、`gemini-2.5-pro`、`gemini-2.5-flash`、`qwen-3-coder`、`code-gpt-5.1-codex`、`code-gpt-5.1-codex-mini`（`cloud-gpt-5.1-codex` 由 `CODE_ENABLE_CLOUD_AGENT_MODEL` 控制）。可通过 `[[agents]]` 或按命令的 `[[subagents.commands]].agents` 替换或固定该列表。

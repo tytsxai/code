@@ -1,26 +1,26 @@
-# Every Code Documentation
+# Every Code 文档
 
-Use these docs to install, configure, and operate Every Code (Code).
+使用这些文档来安装、配置并运行 Every Code（Code）。
 
-## Start Here
-- [Getting started](getting-started.md)
-- [Install](install.md) · [Homebrew](homebrew.md)
-- [Authentication](authentication.md)
-- [FAQ](faq.md)
+## 从这里开始
+- [快速上手](getting-started.md)
+- [安装](install.md) · [Homebrew](HOMEBREW.md)
+- [认证](authentication.md)
+- [常见问题](faq.md)
 
-## Using Code
-- [Executing commands](exec.md)
-- [Execution policy](execpolicy.md)
-- [Slash commands](slash-commands.md)
+## 使用 Code
+- [执行命令](exec.md)
+- [执行策略](execpolicy.md)
+- [斜杠菜单](slash-commands.md)
 - [Auto Drive](auto-drive.md)
-- [Agents & Subagents](agents.md)
-- [Settings overlay](settings.md)
-- [Prompts](prompts.md)
-- [Advanced usage](advanced.md)
-- [Zed integration](integration-zed.md)
+- [Agents 与子智能体](agents.md)
+- [设置界面](settings.md)
+- [提示词](prompts.md)
+- [高级用法](advanced.md)
+- [Zed 集成](integration-zed.md)
 
-## Configuration & Security
-- [Configuration](config.md)
-- [Sandboxing overview](sandbox.md)
-- [Platform sandboxing](platform-sandboxing.md)
-- [Windows sandbox security](platform-sandboxing.md#windows)
+## 配置与安全
+- [配置](config.md)
+- [沙箱概览](sandbox.md)
+- [平台沙箱](platform-sandboxing.md)
+- [Windows 沙箱安全](platform-sandboxing.md#windows)

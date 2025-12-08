@@ -1,26 +1,26 @@
-### Platform sandboxing details
+### 平台沙箱细节
 
-The mechanism Code uses to enforce sandboxing varies by OS.
+Code 所用的沙箱机制因操作系统而异。
 
 ## macOS 12+
-- Uses Apple Seatbelt via `sandbox-exec` with a profile that matches the selected `--sandbox` mode.
+- 通过 `sandbox-exec` 使用 Apple Seatbelt，配置文件与所选 `--sandbox` 模式对应。
 
 ## Linux
-- Uses Landlock plus seccomp to apply the configured sandbox policy.
-- In containerized environments (e.g., Docker) the host must support these APIs. If it does not, configure the container to provide the isolation you need and run Code with `--sandbox danger-full-access` (or `--dangerously-bypass-approvals-and-sandbox`) inside that container instead.
+- 使用 Landlock 加 seccomp 应用沙箱策略。
+- 在容器环境（如 Docker）中需要宿主支持这些 API。若不支持，请让容器自身提供所需隔离，并在容器内以 `--sandbox danger-full-access`（或 `--dangerously-bypass-approvals-and-sandbox`）运行 Code。
 
 ## Windows
-Code launches commands with a restricted Windows token and an allowlist tied to declared workspace roots. Writes are blocked outside those roots (and `%TEMP%` when workspace-write is requested); common escape vectors like alternate data streams, UNC paths, and device handles are proactively denied. The CLI also inserts stub executables (for example, wrapping `ssh`) ahead of the host `PATH` to intercept risky tools before they escape the sandbox.
+Code 用受限的 Windows token 启动命令，并基于声明的工作区根设置允许列表。在这些根以外（以及请求 workspace-write 时的 `%TEMP%`）写入会被阻止；常见逃逸方式如替代数据流、UNC 路径、设备句柄会被主动拒绝。CLI 还会在宿主 `PATH` 前插入 stub 可执行文件（如包装 `ssh`），以便在风险工具逃逸前拦截。
 
-### Known limitations (smoketests)
-Running `python windows-sandbox-rs/sandbox_smoketests.py` with full filesystem and network access currently passes **37/41** cases. The remaining high-value gaps are:
+### 已知限制（smoketests）
+运行 `python windows-sandbox-rs/sandbox_smoketests.py`，在完全文件系统与网络访问下目前通过 **37/41** 个用例，剩余高优先级问题：
 
-| Test | Purpose |
+| 测试 | 目的 |
 | --- | --- |
-| ADS write denied (#32) | Alternate data streams can still be written inside the workspace (should be blocked). |
-| Protected path case-variation denied (#33) | `.GiT` bypasses protections meant for `.git`. Case variants should be rejected. |
-| PATH stub bypass denied (#35) | A workspace `ssh.bat` shim placed first on `PATH` is not reliably executed, so interception cannot be proven. |
-| Start-Process https denied (#41) | `Start-Process 'https://…'` succeeds in read-only runs because Explorer handles the ShellExecute outside the sandbox. |
+| ADS write denied (#32) | 工作区内仍可写入替代数据流，应当阻止。 |
+| Protected path case-variation denied (#33) | `.GiT` 绕过针对 `.git` 的保护，应拒绝大小写变体。 |
+| PATH stub bypass denied (#35) | 将工作区的 `ssh.bat` 放到 PATH 首位时拦截不稳定，无法保证执行。 |
+| Start-Process https denied (#41) | 只读运行中 `Start-Process 'https://…'` 仍成功，因为 Explorer 在沙箱外处理 ShellExecute。 |
 
-### How to help
-If you can iterate on Windows sandboxing, aim to close the four smoketest failures above and rerun `python windows-sandbox-rs/sandbox_smoketests.py` until all **41/41** pass.
+### 如何贡献
+若你能改进 Windows 沙箱，请针对上述四个 smoketest 失败项修复，并反复运行 `python windows-sandbox-rs/sandbox_smoketests.py`，直至 **41/41** 全部通过。

@@ -1,38 +1,38 @@
-# Execpolicy quickstart
+# Execpolicy 快速上手
 
-Every Code can enforce your own rules-based execution policy before it runs shell commands. Policies live in Starlark `.codexpolicy` files under `~/.code/policy` (Code still reads `~/.codex/policy` for backward compatibility).
+Every Code 可以在运行 shell 命令前套用你自定义的规则执行策略。策略保存在 `~/.code/policy` 下的 Starlark `.codexpolicy` 文件里（兼容读取 `~/.codex/policy`）。
 
-## Create a policy
+## 创建策略
 
-1. Create a policy directory: `mkdir -p ~/.code/policy`.
-2. Add one or more `.codexpolicy` files in that folder. Code automatically loads every `.codexpolicy` file in there on startup.
-3. Write `prefix_rule` entries to describe the commands you want to allow, prompt, or block:
+1. 创建策略目录：`mkdir -p ~/.code/policy`。
+2. 在该目录添加一个或多个 `.codexpolicy` 文件。Code 启动时会自动加载其中的所有 `.codexpolicy`。
+3. 通过 `prefix_rule` 声明需要允许、提示或禁止的命令：
 
 ```starlark
 prefix_rule(
     pattern = ["git", ["push", "fetch"]],
     decision = "prompt",  # allow | prompt | forbidden
-    match = [["git", "push", "origin", "main"]],  # examples that must match
-    not_match = [["git", "status"]],              # examples that must not match
+    match = [["git", "push", "origin", "main"]],  # 必须匹配的示例
+    not_match = [["git", "status"]],              # 不应匹配的示例
 )
 ```
 
-- `pattern` is a list of shell tokens, evaluated from left to right; wrap tokens in a nested list to express alternatives (for example, match both `push` and `fetch`).
-- `decision` sets the severity; Code picks the strictest decision when multiple rules match (forbidden > prompt > allow).
-- `match` and `not_match` act as optional unit tests. Code validates them when it loads your policy, so you get feedback if an example has unexpected behavior.
+- `pattern` 是按顺序匹配的命令 token；用嵌套列表表示可选项（如同时匹配 `push` 与 `fetch`）。
+- `decision` 设定严重程度；多条规则命中时取最严格的结果（forbidden > prompt > allow）。
+- `match` 与 `not_match` 相当于可选单元测试。Code 加载策略时会校验，示例行为异常会及时反馈。
 
-In this example rule, if Code wants to run commands with the prefix `git push` or `git fetch`, it will first ask for user approval.
+上述规则表示：当 Code 想运行以 `git push` 或 `git fetch` 开头的命令时，会先询问用户确认。
 
-## Preview decisions
+## 预览决策
 
-Use the `code execpolicy check` subcommand to preview decisions before you save a rule (see the [`codex-execpolicy` README](../code-rs/execpolicy/README.md) for syntax details):
+使用 `code execpolicy check` 子命令可在保存前预览决策（语法详见 [`codex-execpolicy` README](../code-rs/execpolicy/README.md)）：
 
 ```shell
 code execpolicy check --policy ~/.code/policy/default.codexpolicy git push origin main
 ```
 
-Pass multiple `--policy` flags to test how several files combine, and use `--pretty` for formatted JSON output. See the [`code-rs/execpolicy` README](../code-rs/execpolicy/README.md) for a more detailed walkthrough of the available syntax.
+通过多个 `--policy` 参数可测试多文件组合效果，`--pretty` 输出格式化 JSON。更完整的语法说明见 [`code-rs/execpolicy` README](../code-rs/execpolicy/README.md)。
 
-## Status
+## 状态
 
-`execpolicy` commands are still in preview. The API may have breaking changes in the future.
+`execpolicy` 命令仍处于预览阶段，未来 API 可能有破坏性变更。

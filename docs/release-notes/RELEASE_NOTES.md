@@ -1,14 +1,14 @@
 ## @just-every/code v0.5.15
-Automation hooks tighten release hygiene and the CLI picks up the latest binaries.
+自动化钩子进一步收紧发布流程，CLI 获取最新二进制。
 
-### Changes
-- CLI: bump npm metadata to 0.5.15 so fresh installs pull the latest binaries.
-- CI: enforce running ./pre-release.sh before pushes to main to keep release checks green.
+### 变更
+- CLI：将 npm 元数据升级到 0.5.15，确保新安装拉取最新二进制。
+- CI：在推送到 main 前强制运行 `./pre-release.sh`，保证发布检查通过。
 
-### Install
+### 安装
 ```
 npm install -g @just-every/code@latest
 code
 ```
 
-Compare: https://github.com/just-every/code/compare/v0.5.14...v0.5.15
+对比：https://github.com/just-every/code/compare/v0.5.14...v0.5.15

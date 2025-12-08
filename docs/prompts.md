@@ -1,20 +1,20 @@
-## Custom Prompts
+## 自定义提示
 
-Save frequently used prompts as Markdown files and reuse them quickly from the slash menu.
+将常用提示保存为 Markdown 文件，可在斜杠菜单中快速复用。
 
-- Location: Put files in `$CODE_HOME/prompts/` (defaults to `~/.code/prompts/`; Code also reads legacy `~/.codex/prompts/`).
-- File type: Only Markdown files with the `.md` extension are recognized.
-- Name: The filename without the `.md` extension becomes the slash entry. For a file named `my-prompt.md`, type `/my-prompt`.
-- Content: The file contents are sent as your message when you select the item in the slash popup and press Enter.
-- Arguments: Local prompts support placeholders in their content:
-  - `$1..$9` expand to the first nine positional arguments typed after the slash name
-  - `$ARGUMENTS` expands to all arguments joined by a single space
-  - `$$` is preserved literally
-  - Quoted args: Wrap a single argument in double quotes to include spaces, e.g. `/review "docs/My File.md"`.
-- How to use:
-  - Start a new session (Code loads custom prompts on session start).
-  - In the composer, type `/` to open the slash popup and begin typing your prompt name.
-  - Use Up/Down to select it. Press Enter to submit its contents, or Tab to autocomplete the name.
-- Notes:
-  - Files with names that collide with built‑in commands (e.g. `/init`) are ignored and won’t appear.
-  - New or changed files are discovered on session start. If you add a new prompt while Code is running, start a new session to pick it up.
+- 位置：文件放在 `$CODE_HOME/prompts/`（默认为 `~/.code/prompts/`；也会读取旧版 `~/.codex/prompts/`）。
+- 文件类型：仅识别 `.md` 扩展的 Markdown。
+- 名称：去掉 `.md` 的文件名即斜杠条目。例如 `my-prompt.md` 可用 `/my-prompt`。
+- 内容：在斜杠弹窗中选择条目并按 Enter 时，文件内容会作为你的消息发送。
+- 参数：本地提示支持内容占位符：
+  - `$1..$9` 展开为斜杠名后的前九个位置参数
+  - `$ARGUMENTS` 展开为所有参数，以空格连接
+  - `$$` 保留为字面量
+  - 参数带空格时可用双引号包裹，如 `/review "docs/My File.md"`
+- 使用方式：
+  - 开启新会话（Code 在会话启动时加载自定义提示）。
+  - 在输入框输入 `/` 打开斜杠弹窗并开始键入提示名。
+  - 用上下键选择，Enter 提交内容，或 Tab 自动补全名称。
+- 备注：
+  - 与内置命令同名的文件（如 `/init`）会被忽略且不显示。
+  - 新增或修改的文件在会话启动时被发现。如果在 Code 运行中添加新提示，请开启新会话以加载。

@@ -6,178 +6,177 @@
 
 &ensp;
 
-**Every Code** (Code for short) is a fast, local coding agent for your terminal. It's a community-driven fork of `openai/codex` focused on real developer ergonomics: Browser integration, multi-agents, theming, and reasoning control — all while staying compatible with upstream.
+**Every Code**（简称 Code）是一款运行在终端里的本地快速编程智能体。它是社区驱动的 `openai/codex` 分支，专注真实的开发体验：浏览器集成、多智能体、主题与推理控制，同时与上游保持兼容。
 
 &ensp;
-## What's new in v0.5.0 (November 21st 2025)
+## v0.5.0 有哪些更新（2025 年 11 月 21 日）
 
-- **Renamed to Every Code** – new name for better discoverability while keeping the `code` shorthand.
-- **Auto Drive upgraded** – hand `/auto` a task and it now plans, coordinates agents, reruns checks, and recovers from hiccups without babysitting.
-- **Many QoL improvements** – `/resume` and `/undo` work reliably. All major upstream features have been ported across including compaction v2 and -max and -mini models.
-- **Unified settings** – `/settings` centralizes limits, model routing, themes, and CLI integrations so you can audit configuration in one place.
-- **Card-based activity** – Agents, browser sessions, web search, and Auto Drive render as compact cards with drill-down overlays for full logs.
-- **Turbocharged performance** – History rendering and streaming were optimized to stay smooth even during long multi-agent sessions.
-- **Smarter agents** – Mix and match orchestrator CLIs (Claude, Gemini, GPT-5, Qwen, and more) per `/plan`, `/code`, or `/solve` run.
+- **更名为 Every Code**——便于被发现，仍保留 `code` 这个简写。
+- **Auto Drive 升级**——给 `/auto` 一个任务，它会自行规划、协调智能体、重跑检查并在异常时恢复，无需人工看护。
+- **大量易用性改进**——`/resume` 和 `/undo` 可靠运行，移植了所有主要的上游特性，包括 compaction v2 与 -max/-mini 模型。
+- **统一设置中心**——`/settings` 集中管理限额、模型路由、主题和 CLI 集成，一处即可审计配置。
+- **卡片式活动视图**——智能体、浏览器会话、网络搜索和 Auto Drive 以卡片呈现，可展开查看完整日志。
+- **性能加速**——历史渲染与流式展示经过优化，即便长时间多智能体会话也保持流畅。
+- **更聪明的智能体**——可为 `/plan`、`/code`、`/solve` 按需选择编排 CLI（Claude、Gemini、GPT-5、Qwen 等）。
 
-Read the full notes in `docs/release-notes/RELEASE_NOTES.md`.
-
-&ensp;
-## Why Every Code
-
-- 🚀 **Auto Drive orchestration** – Multi-agent automation that now self-heals and ships complete tasks.
-- 🌐 **Browser Integration** – CDP support, headless browsing, screenshots captured inline.
-- 🤖 **Multi-agent commands** – `/plan`, `/code` and `/solve` coordinate multiple CLI agents.
-- 🧭 **Unified settings hub** – `/settings` overlay for limits, theming, approvals, and provider wiring.
-- 🎨 **Theme system** – Switch between accessible presets, customize accents, and preview live via `/themes`.
-- 🔌 **MCP support** – Extend with filesystem, DBs, APIs, or your own tools.
-- 🔒 **Safety modes** – Read-only, approvals, and workspace sandboxing.
+完整变更见 `docs/release-notes/RELEASE_NOTES.md`。
 
 &ensp;
-## AI Videos
+## 为什么选择 Every Code
+
+- 🚀 **Auto Drive 编排**——多智能体自动化，能自愈并交付完整任务。
+- 🌐 **浏览器集成**——CDP 支持、无头浏览、截图内嵌。
+- 🤖 **多智能体命令**——`/plan`、`/code`、`/solve` 协同多个 CLI 智能体。
+- 🧭 **统一设置中心**——`/settings` 覆盖限额、主题、审批与提供商接入。
+- 🎨 **主题系统**——可切换无障碍主题、定制强调色、通过 `/themes` 即时预览。
+- 🔌 **MCP 支持**——可扩展文件系统、数据库、API 或自定义工具。
+- 🔒 **安全模式**——只读、审批与工作区沙箱。
+
+&ensp;
+## AI 视频
 
 &ensp;
 <p align="center">
   <a href="https://youtu.be/UOASHZPruQk">
-    <img src="docs/images/video-auto-drive-new-play.jpg" alt="Play Introducing Auto Drive video" width="100%">
+    <img src="docs/images/video-auto-drive-new-play.jpg" alt="播放 Auto Drive 介绍视频" width="100%">
   </a><br>
-  <strong>Auto Drive Overview</strong>
+  <strong>Auto Drive 概览</strong>
 </p>
 
 &ensp;
 <p align="center">
   <a href="https://youtu.be/sV317OhiysQ">
-    <img src="docs/images/video-v03-play.jpg" alt="Play Multi-Agent Support video" width="100%">
+    <img src="docs/images/video-v03-play.jpg" alt="播放多智能体宣传视频" width="100%">
   </a><br>
-  <strong>Multi-Agent Promo</strong>
+  <strong>多智能体演示</strong>
 </p>
 
 
-
 &ensp;
-## Quickstart
+## 快速开始
 
-### Run
+### 直接运行
 
 ```bash
 npx -y @just-every/code
 ```
 
-### Install & Run
+### 安装并运行
 
 ```bash
 npm install -g @just-every/code
-code // or `coder` if you're using VS Code
+code // 如果已被 VS Code 占用可用 `coder`
 ```
 
-Note: If another tool already provides a `code` command (e.g. VS Code), our CLI is also installed as `coder`. Use `coder` to avoid conflicts.
+注意：若已有 `code` 命令（如 VS Code），CLI 也会安装 `coder`。冲突时使用 `coder`。
 
-**Authenticate** (one of the following):
-- **Sign in with ChatGPT** (Plus/Pro/Team; uses models available to your plan)
-  - Run `code` and pick "Sign in with ChatGPT"
-- **API key** (usage-based)
-  - Set `export OPENAI_API_KEY=xyz` and run `code`
+**认证方式**（二选一）：
+- **ChatGPT 登录**（Plus/Pro/Team；使用你计划可用的模型）
+  - 运行 `code` 选择 “Sign in with ChatGPT”
+- **API Key**（按量计费）
+  - 设置 `export OPENAI_API_KEY=xyz` 然后运行 `code`
 
-### Install Claude & Gemini (optional)
+### 安装 Claude 与 Gemini（可选）
 
-Every Code supports orchestrating other AI CLI tools. Install these and config to use alongside Code.
+Every Code 支持编排其他 AI CLI。安装它们并配置后即可与 Code 一起使用。
 
 ```bash
-# Ensure Node.js 20+ is available locally (installs into ~/.n)
+# 确保本地有 Node.js 20+（安装到 ~/.n）
 npm install -g n
 export N_PREFIX="$HOME/.n"
 export PATH="$N_PREFIX/bin:$PATH"
 n 20.18.1
 
-# Install the companion CLIs
+# 安装配套 CLI
 export npm_config_prefix="${npm_config_prefix:-$HOME/.npm-global}"
 mkdir -p "$npm_config_prefix/bin"
 export PATH="$npm_config_prefix/bin:$PATH"
 npm install -g @anthropic-ai/claude-code @google/gemini-cli @qwen-code/qwen-code
 
-# Quick smoke tests
+# 快速自检
 claude --version
 gemini --version
 qwen --version
 ```
 
-> ℹ️ Add `export N_PREFIX="$HOME/.n"` and `export PATH="$N_PREFIX/bin:$PATH"` (plus the `npm_config_prefix` bin path) to your shell profile so the CLIs stay on `PATH` in future sessions.
+> ℹ️ 将 `export N_PREFIX="$HOME/.n"` 与 `export PATH="$N_PREFIX/bin:$PATH"`（加上 `npm_config_prefix` 的 bin 路径）写入 shell 配置，以便下次会话仍可访问这些 CLI。
 
 &ensp;
-## Commands
+## 命令
 
-### Browser
+### 浏览器
 ```bash
-# Connect code to external Chrome browser (running CDP)
-/chrome        # Connect with auto-detect port
-/chrome 9222   # Connect to specific port
+# 连接外部 Chrome（CDP）
+/chrome        # 自动检测端口连接
+/chrome 9222   # 指定端口连接
 
-# Switch to internal browser mode
-/browser       # Use internal headless browser
-/browser https://example.com  # Open URL in internal browser
+# 切换到内置浏览器模式
+/browser       # 使用内置无头浏览器
+/browser https://example.com  # 在内置浏览器中打开 URL
 ```
 
 ### Agents
 ```bash
-# Plan code changes (Claude, Gemini and GPT-5 consensus)
-# All agents review task and create a consolidated plan
+# 规划改动（Claude、Gemini、GPT-5 共识）
+# 所有智能体审阅任务并创建合并计划
 /plan "Stop the AI from ordering pizza at 3AM"
 
-# Solve complex problems (Claude, Gemini and GPT-5 race)
-# Fastest preferred (see https://arxiv.org/abs/2505.17813)
+# 解决复杂问题（Claude、Gemini、GPT-5 竞速）
+# 最快的优先（参见 https://arxiv.org/abs/2505.17813）
 /solve "Why does deleting one user drop the whole database?"
 
-# Write code! (Claude, Gemini and GPT-5 consensus)
-# Creates multiple worktrees then implements the optimal solution
+# 写代码！（Claude、Gemini、GPT-5 共识）
+# 创建多个工作树并实施最优方案
 /code "Show dark mode when I feel cranky"
 ```
 
 ### Auto Drive
 ```bash
-# Hand off a multi-step task; Auto Drive will coordinate agents and approvals
+# 交给多步骤自动化；Auto Drive 会协调智能体和审批
 /auto "Refactor the auth flow and add device login"
 
-# Resume or inspect an active Auto Drive run
+# 恢复或查看进行中的 Auto Drive
 /auto status
 ```
 
-### General
+### 通用
 ```bash
-# Try a new theme!
+# 试用新主题
 /themes
 
-# Change reasoning level
+# 调整推理力度
 /reasoning low|medium|high
 
-# Switch models or effort presets
+# 切换模型或努力档
 /model
 
-# Start new conversation
+# 开启新对话
 /new
 ```
 
-## CLI reference
+## CLI 参考
 
 ```shell
 code [options] [prompt]
 
 Options:
-  --model <name>        Override the model (gpt-5.1, claude-opus, etc.)
-  --read-only          Prevent file modifications
-  --no-approval        Skip approval prompts (use with caution)
-  --config <key=val>   Override config values
-  --oss                Use local open source models
-  --sandbox <mode>     Set sandbox level (read-only, workspace-write, etc.)
-  --help              Show help information
-  --debug             Log API requests and responses to file
-  --version           Show version number
+  --model <name>        覆盖模型（gpt-5.1、claude-opus 等）
+  --read-only          阻止文件修改
+  --no-approval        跳过审批提示（谨慎使用）
+  --config <key=val>   覆盖配置项
+  --oss                使用本地开源模型
+  --sandbox <mode>     设置沙箱级别（read-only、workspace-write 等）
+  --help              显示帮助
+  --debug             将 API 请求/响应写入日志
+  --version           显示版本号
 ```
 
 &ensp;
-## Memory & project docs
+## 记忆与项目文档
 
-Every Code can remember context across sessions:
+Every Code 可在会话间记忆上下文：
 
-1. **Create an `AGENTS.md` or `CLAUDE.md` file** in your project root:
+1. **在项目根创建 `AGENTS.md` 或 `CLAUDE.md`**：
 ```markdown
 # Project Context
 This is a React TypeScript application with:
@@ -191,36 +190,36 @@ This is a React TypeScript application with:
 - `/server/` - Backend services
 ```
 
-2. **Session memory**: Every Code maintains conversation history
-3. **Codebase analysis**: Automatically understands project structure
+2. **会话记忆**：保留对话历史
+3. **代码库分析**：自动理解项目结构
 
 &ensp;
-## Non-interactive / CI mode
+## 非交互 / CI 模式
 
-For automation and CI/CD:
+适用于自动化与 CI/CD：
 
 ```shell
-# Run a specific task
+# 运行特定任务
 code --no-approval "run tests and fix any failures"
 
-# Generate reports
+# 生成报告
 code --read-only "analyze code quality and generate report"
 
-# Batch processing
+# 批处理
 code --config output_format=json "list all TODO comments"
 ```
 
 &ensp;
 ## Model Context Protocol (MCP)
 
-Every Code supports MCP for extended capabilities:
+Every Code 支持 MCP 扩展能力：
 
-- **File operations**: Advanced file system access
-- **Database connections**: Query and modify databases
-- **API integrations**: Connect to external services
-- **Custom tools**: Build your own extensions
+- **文件操作**：高级文件系统访问
+- **数据库连接**：查询与修改数据库
+- **API 集成**：连接外部服务
+- **自定义工具**：构建自定义扩展
 
-Configure MCP in `~/.code/config.toml` Define each server under a named table like `[mcp_servers.<name>]` (this maps to the JSON `mcpServers` object used by other clients):
+在 `~/.code/config.toml` 配置 MCP。为每个服务创建命名表，例如 `[mcp_servers.<name>]`（与其他客户端使用的 `mcpServers` JSON 对象对应）：
 
 ```toml
 [mcp_servers.filesystem]
@@ -229,12 +228,12 @@ args = ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/project"]
 ```
 
 &ensp;
-## Configuration
+## 配置
 
-Main config file: `~/.code/config.toml`
+主配置文件：`~/.code/config.toml`
 
 > [!NOTE]
-> Every Code reads from both `~/.code/` and `~/.codex/` for backwards compatibility, but it only writes updates to `~/.code/`. If you switch back to Codex and it fails to start, remove `~/.codex/config.toml`. If Every Code appears to miss settings after upgrading, copy your legacy `~/.codex/config.toml` into `~/.code/`.
+> Every Code 同时读取 `~/.code/` 与 `~/.codex/`（兼容旧版），但只会写入 `~/.code/`。若切回 Codex 启动失败，删除 `~/.codex/config.toml`。若升级后缺少设置，可将旧的 `~/.codex/config.toml` 复制到 `~/.code/`。
 
 ```toml
 # Model settings
@@ -259,86 +258,86 @@ model_reasoning_effort = "high"
 model_reasoning_summary = "detailed"
 ```
 
-### Environment variables
+### 环境变量
 
-- `CODE_HOME`: Override config directory location
-- `OPENAI_API_KEY`: Use API key instead of ChatGPT auth
-- `OPENAI_BASE_URL`: Use alternative API endpoints
-- `OPENAI_WIRE_API`: Force the built-in OpenAI provider to use `chat` or `responses` wiring
+- `CODE_HOME`：自定义配置目录位置
+- `OPENAI_API_KEY`：使用 API Key 而非 ChatGPT 登录
+- `OPENAI_BASE_URL`：使用备用 API 端点
+- `OPENAI_WIRE_API`：强制内置 OpenAI 提供商使用 `chat` 或 `responses` 接口
 
 &ensp;
 ## FAQ
 
-**How is this different from the original?**
-> This fork adds browser integration, multi-agent commands (`/plan`, `/solve`, `/code`), theme system, and enhanced reasoning controls while maintaining full compatibility.
+**与原版有何不同？**
+> 本分支增加了浏览器集成、多智能体命令（`/plan`、`/solve`、`/code`）、主题系统与推理控制，并保持完全兼容。
 
-**Can I use my existing Codex configuration?**
-> Yes. Every Code reads from both `~/.code/` (primary) and legacy `~/.codex/` directories. We only write to `~/.code/`, so Codex will keep running if you switch back; copy or remove legacy files if you notice conflicts.
+**可以复用现有的 Codex 配置吗？**
+> 可以。Every Code 会同时读取 `~/.code/`（主目录）与旧版 `~/.codex/`。只写入 `~/.code/`，切回 Codex 仍可运行；如发现冲突，可复制或删除旧文件。
 
-**Does this work with ChatGPT Plus?**
-> Absolutely. Use the same "Sign in with ChatGPT" flow as the original.
+**能配合 ChatGPT Plus 吗？**
+> 完全可以。沿用原有的 “Sign in with ChatGPT” 流程。
 
-**Is my data secure?**
-> Yes. Authentication stays on your machine, and we don't proxy your credentials or conversations.
+**数据安全吗？**
+> 安全。认证留在本机，我们不会代理你的凭据或对话。
 
 &ensp;
-## Contributing
+## 贡献
 
-We welcome contributions! Every Code maintains compatibility with upstream while adding community-requested features.
+欢迎贡献！Every Code 在保持与上游兼容的同时加入社区需求的功能。
 
-### Development workflow
+### 开发流程
 
 ```bash
-# Clone and setup
+# 克隆与安装依赖
 git clone https://github.com/just-every/code.git
 cd code
 npm install
 
-# Build (use fast build for development)
+# 构建（开发时使用快速构建）
 ./build-fast.sh
 
-# Run locally
+# 本地运行
 ./code-rs/target/dev-fast/code
 ```
 
-### Opening a pull request
+### 提交 Pull Request
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Make your changes
-4. Run tests: `cargo test`
-5. Build successfully: `./build-fast.sh`
-6. Submit a pull request
+1. Fork 仓库
+2. 创建特性分支：`git checkout -b feature/amazing-feature`
+3. 实施改动
+4. 运行测试：`cargo test`
+5. 确认构建通过：`./build-fast.sh`
+6. 提交 PR
 
-
-&ensp;
-## Legal & Use
-
-### License & attribution
-- This project is a community fork of `openai/codex` under **Apache-2.0**. We preserve upstream LICENSE and NOTICE files.
-- **Every Code** (Code) is **not** affiliated with, sponsored by, or endorsed by OpenAI.
-
-### Your responsibilities
-Using OpenAI, Anthropic or Google services through Every Code means you agree to **their Terms and policies**. In particular:
-- **Don't** programmatically scrape/extract content outside intended flows.
-- **Don't** bypass or interfere with rate limits, quotas, or safety mitigations.
-- Use your **own** account; don't share or rotate accounts to evade limits.
-- If you configure other model providers, you're responsible for their terms.
-
-### Privacy
-- Your auth file lives at `~/.code/auth.json`
-- Inputs/outputs you send to AI providers are handled under their Terms and Privacy Policy; consult those documents (and any org-level data-sharing settings).
-
-### Subject to change
-AI providers can change eligibility, limits, models, or authentication flows. Every Code supports **both** ChatGPT sign-in and API-key modes so you can pick what fits (local/hobby vs CI/automation).
 
 &ensp;
-## License
+## 法律与使用
 
-Apache 2.0 - See [LICENSE](LICENSE) file for details.
+### 许可证与归属
+- 本项目是 `openai/codex` 的社区分支，沿用 **Apache-2.0** 许可证并保留上游 LICENSE 与 NOTICE。
+- **Every Code**（Code）**并非** OpenAI 关联或认可。
 
-Every Code is a community fork of the original Codex CLI. We maintain compatibility while adding enhanced features requested by the developer community.
+### 你的责任
+通过 Every Code 使用 OpenAI、Anthropic 或 Google 服务即表示你同意**它们的条款与政策**。尤其：
+- **不要** 在非预期路径下抓取/提取内容。
+- **不要** 绕过或干扰限流、配额或安全措施。
+- 使用你**自己的**账号；不要共享或轮换账号以逃避限制。
+- 若配置其他模型提供商，你需遵守相应条款。
+
+### 隐私
+- 认证文件位于 `~/.code/auth.json`
+- 你发送给模型的输入/输出遵循各提供商条款与隐私政策；请查看这些文档（以及组织级数据共享设置）。
+
+### 可能变更
+AI 提供商可能调整资格、限额、模型或认证流程。Every Code 同时支持 ChatGPT 登录与 API Key 模式，可按需选择（本地/爱好 vs CI/自动化）。
+
+&ensp;
+## 许可证
+
+Apache 2.0 - 详见 [LICENSE](LICENSE)。
+
+Every Code 是原始 Codex CLI 的社区分支，在保持兼容的同时提供开发者社区期待的增强功能。
 
 &ensp;
 ---
-**Need help?** Open an issue on [GitHub](https://github.com/just-every/code/issues) or check our documentation.
+**需要帮助？** 在 [GitHub](https://github.com/just-every/code/issues) 提交 issue 或查看我们的文档。

@@ -1,7 +1,22 @@
-# Changelog
+# 更新记录（Changelog）
 
 > [!TIP]
-> We're constantly improving Code! This page documents the core changes. You can also check our [releases page](https://github.com/just-every/code/releases) for additional information.
+> 我们持续改进 Code！此页记录主要变更，更多细节可查看 [releases 页面](https://github.com/just-every/code/releases) 或 `docs/release-notes/RELEASE_NOTES.md`。
+
+## 0.5.x 中文速览
+
+- 0.5.15（2025-11-28）：npm 元数据同步到 0.5.15，推送 main 前强制先跑 `./pre-release.sh`。
+- 0.5.14（2025-11-28）：桥接事件直接写入会话，修正 TUI/Auto Drive 渲染顺序，裁剪孤立工具输出。
+- 0.5.13（2025-11-27）：CLI/npm 元数据更新，新增 rust-ci 占位流程。
+- 0.5.12（2025-11-27）：CLI/npm 元数据更新，移除冗余的 CodeQL workflow。
+- 0.5.10（2025-11-27）：CLI/npm 元数据更新，加入无需 Ruby 的 CodeQL workflow。
+- 0.5.8（2025-11-26）：发布 CLAUDE 指南更新并整理工作文档，同步 npm 元数据。
+- 0.5.7（2025-11-26）：检测 shell 输出编码，Auto Drive 在非 git 仓库强制只读，App Server 输出更多 token/诊断事件，Shell MCP 宣告能力并支持登录。
+- 0.5.5（2025-11-25）：Auto Drive 回退/诊断与倒计时改进，TUI 提示管理升级，流式重连与模型日志更清晰，默认智能体 roster 调整。
+- 0.5.4（2025-11-24）：传递推理力度覆盖并自动裁剪溢出的历史。
+- 0.5.3（2025-11-24）：Auto Drive CLI 别名与全自动模式，TUI 粘贴/回退修复，网络重试更稳，配置兼容 Responses/Chat。
+- 0.5.2（2025-11-22）：Auto Drive 默认 gpt-5.1-codex-max，新增 gemini-3-pro 选项，并限制推理力度避免无效请求。
+- 0.5.0（2025-11-21）：更名 Every Code，Auto Drive 增强（压缩、诊断、自恢复），默认模型升级到 gpt-5.1 系列，统一设置与通知 UI。
 
 ## [Unreleased]
 

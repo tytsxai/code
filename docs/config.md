@@ -1,59 +1,54 @@
-# Config
+# 配置
 
 <!-- markdownlint-disable MD012 MD013 MD028 MD033 -->
 
-Every Code supports several mechanisms for setting config values:
+Every Code 支持多种方式设置配置值：
 
-- Config-specific command-line flags, such as `--model o3` (highest precedence).
-- A generic `-c`/`--config` flag that takes a `key=value` pair, such as `--config model="o3"`.
-  - The key can contain dots to set a value deeper than the root, e.g. `--config model_providers.openai.wire_api="chat"`.
-  - For consistency with `config.toml`, values are a string in TOML format rather than JSON format, so use `key='{a = 1, b = 2}'` rather than `key='{"a": 1, "b": 2}'`.
-    - The quotes around the value are necessary, as without them your shell would split the config argument on spaces, resulting in `code` receiving `-c key={a` with (invalid) additional arguments `=`, `1,`, `b`, `=`, `2}`.
-  - Values can contain any TOML object, such as `--config shell_environment_policy.include_only='["PATH", "HOME", "USER"]'`.
-  - If `value` cannot be parsed as a valid TOML value, it is treated as a string value. This means that `-c model='"o3"'` and `-c model=o3` are equivalent.
-    - In the first case, the value is the TOML string `"o3"`, while in the second the value is `o3`, which is not valid TOML and therefore treated as the TOML string `"o3"`.
-    - Because quotes are interpreted by one's shell, `-c key="true"` will be correctly interpreted in TOML as `key = true` (a boolean) and not `key = "true"` (a string). If for some reason you needed the string `"true"`, you would need to use `-c key='"true"'` (note the two sets of quotes).
-- The `$CODE_HOME/config.toml` configuration file. `CODE_HOME` defaults to `~/.code`; Every Code (Code) also reads from `$CODEX_HOME`/`~/.codex` for backwards compatibility but only writes to `~/.code`. (Logs and other state use the same directory.)
+- 针对配置的命令行参数，如 `--model o3`（最高优先级）。
+- 通用 `-c`/`--config`，以 `key=value` 形式传参，例如 `--config model="o3"`。
+  - key 可含点号以设置更深层字段，如 `--config model_providers.openai.wire_api="chat"`。
+  - 为与 `config.toml` 一致，值使用 TOML 字符串格式，而非 JSON。用 `key='{a = 1, b = 2}'` 而不是 `key='{"a": 1, "b": 2}'`。
+    - 必须为值加引号，否则 shell 会按空格拆分，导致 `code` 接收到 `-c key={a` 这类非法参数。
+  - 值可为任意 TOML 对象，例如 `--config shell_environment_policy.include_only='["PATH", "HOME", "USER"]'`。
+  - 若 value 无法解析为合法 TOML，则按字符串处理，因此 `-c model='"o3"'` 与 `-c model=o3` 等效。
+    - 第一种解析为 TOML 字符串 `"o3"`，第二种因 `o3` 不是合法 TOML，最终也视为字符串 `"o3"`。
+    - 引号会被 shell 解释，`-c key="true"` 会解析为 TOML 布尔值 `true` 而非字符串；若需要字符串 `"true"`，使用 `-c key='"true"'`。
+- `$CODE_HOME/config.toml` 配置文件。`CODE_HOME` 默认 `~/.code`；Every Code 也会读取 `$CODEX_HOME`/`~/.codex`（只写入 `~/.code`）。日志等状态共享该目录。
 
-Both the `--config` flag and the `config.toml` file support the following options:
+`--config` 参数与 `config.toml` 支持以下选项：
 
 ## model
 
-The model that Code should use.
+指定 Code 使用的模型。
 
 ```toml
-model = "o3"  # overrides the default of "gpt-5.1-codex"
+model = "o3"  # 覆盖默认 "gpt-5.1-codex"
 ```
 
 ## model_providers
 
-This option lets you override and amend the default set of model providers bundled with Code. This value is a map where the key is the value to use with `model_provider` to select the corresponding provider.
+覆盖或补充默认的模型提供商。该表的键对应 `model_provider` 的取值。
 
-For example, if you wanted to add a provider that uses the OpenAI 4o model via the chat completions API, then you could add the following configuration:
+例如要通过 Chat Completions API 使用 OpenAI 4o，可添加：
 
 ```toml
-# Recall that in TOML, root keys must be listed before tables.
+# 根键需在表之前声明
 model = "gpt-4o"
 model_provider = "openai-chat-completions"
 
 [model_providers.openai-chat-completions]
-# Name of the provider that will be displayed in the Code UI.
 name = "OpenAI using Chat Completions"
-# The path `/chat/completions` will be amended to this URL to make the POST
-# request for the chat completions.
+# POST /chat/completions 会拼接到此 URL
 base_url = "https://api.openai.com/v1"
-# If `env_key` is set, identifies an environment variable that must be set when
-# using Code with this provider. The value of the environment variable must be
-# non-empty and will be used in the `Bearer TOKEN` HTTP header for the POST request.
+# env_key 指定必须存在的环境变量；值用于 Bearer TOKEN 头
 env_key = "OPENAI_API_KEY"
-# Valid values for wire_api are "chat" and "responses". Defaults to "chat" if omitted.
+# wire_api 可为 "chat" 或 "responses"，默认 chat
 wire_api = "chat"
-# If necessary, extra query params that need to be added to the URL.
-# See the Azure example below.
+# 需要时可添加额外查询参数，见下方 Azure 示例
 query_params = {}
 ```
 
-Note this makes it possible to use the Code CLI with non-OpenAI models, so long as they use a wire API that is compatible with the OpenAI chat completions API. For example, you could define the following provider to use Code CLI with Ollama running locally:
+只要兼容 OpenAI Chat Completions 协议，Code CLI 也可接入其他模型。例如本地 Ollama：
 
 ```toml
 [model_providers.ollama]
@@ -61,7 +56,7 @@ name = "Ollama"
 base_url = "http://localhost:11434/v1"
 ```
 
-Or a third-party provider (using a distinct environment variable for the API key):
+或第三方提供商（使用独立的 API Key 环境变量）：
 
 ```toml
 [model_providers.mistral]
@@ -70,74 +65,55 @@ base_url = "https://api.mistral.ai/v1"
 env_key = "MISTRAL_API_KEY"
 ```
 
-It is also possible to configure a provider to include extra HTTP headers with a request. These can be hardcoded values (`http_headers`) or values read from environment variables (`env_http_headers`):
+也可为请求添加额外 HTTP 头，既可硬编码（`http_headers`）也可从环境变量读取（`env_http_headers`）：
 
 ```toml
 [model_providers.example]
-# name, base_url, ...
-
-# This will add the HTTP header `X-Example-Header` with value `example-value`
-# to each request to the model provider.
+# name、base_url ...
 http_headers = { "X-Example-Header" = "example-value" }
-
-# This will add the HTTP header `X-Example-Features` with the value of the
-# `EXAMPLE_FEATURES` environment variable to each request to the model provider
-# _if_ the environment variable is set and its value is non-empty.
+# 若环境变量存在且非空，会添加对应头
 env_http_headers = { "X-Example-Features" = "EXAMPLE_FEATURES" }
 ```
 
-### Azure model provider example
+### Azure 提供商示例
 
-Note that Azure requires `api-version` to be passed as a query parameter, so be sure to specify it as part of `query_params` when defining the Azure provider:
+Azure 需要将 `api-version` 作为查询参数传递，请在 `query_params` 中设置：
 
 ```toml
 [model_providers.azure]
 name = "Azure"
-# Make sure you set the appropriate subdomain for this URL.
+# 将 YOUR_PROJECT_NAME 替换为你的子域
 base_url = "https://YOUR_PROJECT_NAME.openai.azure.com/openai"
-env_key = "AZURE_OPENAI_API_KEY"  # Or "OPENAI_API_KEY", whichever you use.
+env_key = "AZURE_OPENAI_API_KEY"  # 或 "OPENAI_API_KEY"
 query_params = { api-version = "2025-04-01-preview" }
 wire_api = "responses"
 ```
 
-Export your key before launching Code: `export AZURE_OPENAI_API_KEY=…`
+在启动 Code 前导出密钥：`export AZURE_OPENAI_API_KEY=…`
 
-### Per-provider network tuning
+### 每个提供商的网络调优
 
-The following optional settings control retry behaviour and streaming idle timeouts **per model provider**. They must be specified inside the corresponding `[model_providers.<id>]` block in `config.toml`. (Older releases accepted top‑level keys; those are now ignored.)
-
-Example:
+以下可选设置控制 **每个模型提供商** 的重试与流式空闲超时。必须写在对应的 `[model_providers.<id>]` 下（早期顶层键已废弃）：
 
 ```toml
 [model_providers.openai]
 name = "OpenAI"
 base_url = "https://api.openai.com/v1"
 env_key = "OPENAI_API_KEY"
-# network tuning overrides (all optional; falls back to built‑in defaults)
-request_max_retries = 4            # retry failed HTTP requests
-stream_max_retries = 10            # retry dropped SSE streams
-stream_idle_timeout_ms = 300000    # 5m idle timeout
+request_max_retries = 4         # HTTP 请求重试
+stream_max_retries = 10         # SSE 流掉线重试
+stream_idle_timeout_ms = 300000 # 流式空闲超时（毫秒）
 ```
 
-#### request_max_retries
-
-How many times Code will retry a failed HTTP request to the model provider. Defaults to `4`.
-
-#### stream_max_retries
-
-Number of times Code will attempt to reconnect when a streaming response is interrupted. Defaults to `5`.
-
-#### stream_idle_timeout_ms
-
-How long Code will wait for activity on a streaming response before treating the connection as lost. Defaults to `300_000` (5 minutes).
+- `request_max_retries`：失败请求的重试次数，默认 `4`。
+- `stream_max_retries`：流式中断的重连次数，默认 `5`。
+- `stream_idle_timeout_ms`：流式无活动判定断开的等待时间，默认 `300000`（5 分钟）。
 
 ## model_provider
 
-Identifies which provider to use from the `model_providers` map. Defaults to `"openai"`. You can override the `base_url` for the built-in `openai` provider via the `OPENAI_BASE_URL` environment variable and force the wire protocol (`"responses"` or `"chat"`) with `OPENAI_WIRE_API`.
+从 `model_providers` 表选择提供商，默认 `"openai"`。可用环境变量覆盖内置 `openai` 的 `base_url`（`OPENAI_BASE_URL`），并用 `OPENAI_WIRE_API` 强制协议（`"responses"` 或 `"chat"`）。
 
-Note that if you override `model_provider`, then you likely want to override
-`model`, as well. For example, if you are running ollama with Mistral locally,
-then you would need to add the following to your config in addition to the new entry in the `model_providers` map:
+若覆盖了 `model_provider`，通常也要覆盖 `model`。例如本地运行 Ollama 的 Mistral：
 
 ```toml
 model_provider = "ollama"
@@ -146,45 +122,39 @@ model = "mistral"
 
 ## approval_policy
 
-Determines when the user should be prompted to approve whether Code can execute a command:
+决定何时提示用户允许执行命令：
 
 ```toml
-# Code has hardcoded logic that defines a set of "trusted" commands.
-# Setting the approval_policy to `untrusted` means that Code will prompt the
-# user before running a command not in the "trusted" set.
-#
-# A configurable trusted-command list is planned; for now the built-in set is fixed.
+# Code 内置了一组“可信”命令。
+# 设置为 untrusted 时，运行不在列表的命令前会提示。
 approval_policy = "untrusted"
 ```
 
-If you want to be notified whenever a command fails, use "on-failure":
+希望命令失败时再提示，可用 "on-failure"：
 
 ```toml
-# If the command fails when run in the sandbox, Code asks for permission to
-# retry the command outside the sandbox.
+# 命令在沙箱失败时，会请求在沙箱外重试的权限。
 approval_policy = "on-failure"
 ```
 
-If you want the model to run until it decides that it needs to ask you for escalated permissions, use "on-request":
+由模型决定何时申请权限：
 
 ```toml
-# The model decides when to escalate
 approval_policy = "on-request"
 ```
 
-Alternatively, you can have the model run until it is done, and never ask to run a command with escalated permissions:
+或完全不提示、直接运行：
 
 ```toml
-# User is never prompted: if the command fails, Code will automatically try
-# something out. Note the `exec` subcommand always uses this mode.
+# 不会提示；命令失败时 Code 会自行尝试其他方案。`exec` 子命令始终使用此模式。
 approval_policy = "never"
 ```
 
 ## agents
 
-Use `[[agents]]` blocks to register additional CLI programs that Code can launch as peers. Each block maps a short `name` (referenced elsewhere in the config) to the command to execute, optional default flags, and environment variables.
+使用 `[[agents]]` 注册额外的 CLI 程序，Code 会作为对等智能体启动它们。每个块映射短 `name`（在配置中引用）到可执行命令、默认参数和环境变量。
 
-> **Note:** Built-in model slugs (for example `code-gpt-5.1-codex`, `claude-sonnet-4.5`) automatically inject the correct `--model` or `-m` flag. To avoid conflicting arguments, Code strips any `--model`/`-m` flags you place in `args`, `args_read_only`, or `args_write` before launching the agent. If you need a new model variant, add a slug in `code-rs/core/src/agent_defaults.rs` (or set an environment variable consumed by the CLI) rather than pinning the flag here.
+> **注意：** 内置模型 slug（如 `code-gpt-5.1-codex`、`claude-sonnet-4.5`）会自动注入正确的 `--model`/`-m`。为避免冲突，Code 会在启动智能体前去掉你在 `args`/`args_read_only`/`args_write` 中提供的 `--model`/`-m`。需要新的模型变体时，请在 `code-rs/core/src/agent_defaults.rs` 添加 slug（或设置 CLI 使用的环境变量），不要在这里固定参数。
 
 ```toml
 [[agents]]
@@ -197,11 +167,11 @@ args = ["-y"]
 env = { GEMINI_API_KEY = "..." }
 ```
 
+当 `enabled = true` 时，智能体会出现在 TUI 选择器及引用它的子智能体命令中。`read-only = true` 则即便主会话允许写入，也会在修改文件前请求审批。
+
 ## notice
 
-Code stores acknowledgement flags for one-time upgrade prompts inside a `[notice]`
-table. These booleans allow you to suppress specific dialogs globally. When set
-to `true`, Code will no longer prompt about that migration.
+Code 会在 `[notice]` 表中存储一次性升级提示的确认标记。设为 `true` 后不会再提示对应迁移。
 
 ```toml
 [notice]
@@ -209,22 +179,18 @@ hide_gpt5_1_migration_prompt = true
 hide_gpt-5.1-codex-max_migration_prompt = true
 ```
 
-When `enabled = true`, the agent is surfaced in the TUI picker and any sub-agent commands that reference it. Setting `read-only = true` forces the agent to request approval before modifying files even if the primary session permits writes.
-
 ## profiles
 
-A _profile_ is a collection of configuration values that can be set together. Multiple profiles can be defined in `config.toml` and you can specify the one you
-want to use at runtime via the `--profile` flag.
+配置集（profile）是一组可以一起应用的配置值，可在 `config.toml` 定义多个，并通过 `--profile` 选择使用的配置。
 
-Here is an example of a `config.toml` that defines multiple profiles:
+示例 `config.toml`：
 
 ```toml
 model = "o3"
 approval_policy = "untrusted"
 disable_response_storage = false
 
-# Setting `profile` is equivalent to specifying `--profile o3` on the command
-# line, though the `--profile` flag can still be used to override this value.
+# 等同命令行 --profile o3，可被 CLI 覆盖
 profile = "o3"
 
 [model_providers.openai-chat-completions]
@@ -251,60 +217,58 @@ approval_policy = "on-failure"
 disable_response_storage = true
 ```
 
-Users can specify config values at multiple levels. Order of precedence is as follows:
+配置优先级从高到低：
 
-1. custom command-line argument, e.g., `--model o3`
-2. as part of a profile, where the `--profile` is specified via a CLI (or in the config file itself)
-3. as an entry in `config.toml`, e.g., `model = "o3"`
-4. the default value that comes with Code CLI (i.e., Code CLI defaults to `gpt-5.1-codex`)
+1. 自定义命令行参数（如 `--model o3`）
+2. 指定的 profile（来自 CLI 或配置文件）
+3. `config.toml` 中的条目（如 `model = "o3"`）
+4. Code CLI 内置默认值（默认模型 `gpt-5.1-codex`）
 
 ## model_reasoning_effort
 
-If the selected model is known to support reasoning (for example: `o3`, `o4-mini`, `codex-*`, `gpt-5.1`, `gpt-5.1-codex`), reasoning is enabled by default when using the Responses API. As explained in the [OpenAI Platform documentation](https://platform.openai.com/docs/guides/reasoning?api-mode=responses#get-started-with-reasoning), this can be set to:
+若所选模型支持推理（如 `o3`、`o4-mini`、`codex-*`、`gpt-5.1`、`gpt-5.1-codex`），在 Responses API 下默认开启。可设置：
 
 - `"minimal"`
 - `"low"`
-- `"medium"` (default)
+- `"medium"`（默认）
 - `"high"`
 
-Note: to minimize reasoning, choose `"minimal"`.
+想尽量减少推理时用 `"minimal"`。
 
 ## model_reasoning_summary
 
-If the model name starts with `"o"` (as in `"o3"` or `"o4-mini"`) or `"codex"`, reasoning is enabled by default when using the Responses API. As explained in the [OpenAI Platform documentation](https://platform.openai.com/docs/guides/reasoning?api-mode=responses#reasoning-summaries), this can be set to:
+模型名以 `"o"`（如 `"o3"`、`"o4-mini"`）或 `"codex"` 开头时，在 Responses API 下默认启用推理摘要。可设置：
 
-- `"auto"` (default)
+- `"auto"`（默认）
 - `"concise"`
 - `"detailed"`
 
-To disable reasoning summaries, set `model_reasoning_summary` to `"none"` in your config:
+关闭推理摘要：
 
 ```toml
-model_reasoning_summary = "none"  # disable reasoning summaries
+model_reasoning_summary = "none"
 ```
 
 ## model_verbosity
 
-Controls output length/detail on GPT‑5 family models when using the Responses API. Supported values:
+控制使用 Responses API 时 GPT‑5 系列模型的输出长度/详细度。取值：
 
 - `"low"`
-- `"medium"` (default when omitted)
+- `"medium"`（默认）
 - `"high"`
 
-When set, Code includes a `text` object in the request payload with the configured verbosity, for example: `"text": { "verbosity": "low" }`.
-
-Example:
+设置后，Code 会在请求载荷中包含 `text` 对象，例如：
 
 ```toml
 model = "gpt-5.1"
 model_verbosity = "low"
 ```
 
-Note: This applies only to providers using the Responses API. Chat Completions providers are unaffected.
+仅对 Responses API 提供商生效，Chat Completions 不受影响。
 
 ## model_supports_reasoning_summaries
 
-By default, `reasoning` is only set on requests to OpenAI models that are known to support them. To force `reasoning` to set on requests to the current model, you can force this behavior by setting the following in `config.toml`:
+默认仅对已知支持推理摘要的 OpenAI 模型设置 `reasoning`。若想强制当前模型启用，可设置：
 
 ```toml
 model_supports_reasoning_summaries = true
@@ -312,76 +276,64 @@ model_supports_reasoning_summaries = true
 
 ## sandbox_mode
 
-Code executes model-generated shell commands inside an OS-level sandbox.
+Code 会在 OS 级沙箱中执行模型生成的命令。
 
-In most cases you can pick the desired behaviour with a single option:
+大多数情况下可直接用单个选项：
 
 ```toml
-# same as `--sandbox read-only`
+# 等同 --sandbox read-only
 sandbox_mode = "read-only"
 ```
 
-The default policy is `read-only`, which means commands can read any file on
-disk, but attempts to write a file or access the network will be blocked.
+默认策略为 `read-only`：命令可读取任意文件，但写文件或访问网络会被阻止。
 
-A more relaxed policy is `workspace-write`. When specified, the current working directory for the Code task will be writable (as well as `$TMPDIR` on macOS). Note that the CLI defaults to using the directory where it was spawned as `cwd`, though this can be overridden using `--cwd/-C`.
+更宽松的是 `workspace-write`：Code 任务的当前工作目录可写（macOS 上 `$TMPDIR` 也可写）。CLI 默认将启动目录作为 `cwd`，可用 `--cwd/-C` 覆盖。
 
-Historically, Code allowed writes inside the top‑level `.git/` folder when using `workspace-write`. That permissive behavior is the default again. If you want to protect `.git` under `workspace-write`, you can opt out via `[sandbox_workspace_write].allow_git_writes = false`.
+历史上 `workspace-write` 允许写入顶层 `.git/`，这种宽松行为现在仍是默认。若想保护 `.git`，可在 `[sandbox_workspace_write]` 设置 `allow_git_writes = false`。
 
 ```toml
-# same as `--sandbox workspace-write`
+# 等同 --sandbox workspace-write
 sandbox_mode = "workspace-write"
 
-# Extra settings that only apply when `sandbox = "workspace-write"`.
+# 仅在 sandbox="workspace-write" 时生效
 [sandbox_workspace_write]
-# By default, the cwd for the Code session will be writable as well as $TMPDIR
-# (if set) and /tmp (if it exists). Setting the respective options to `true`
-# will override those defaults.
 exclude_tmpdir_env_var = false
 exclude_slash_tmp = false
-
-# Optional list of _additional_ writable roots beyond $TMPDIR and /tmp.
-
-# Protect top-level .git under writable roots (default is true = allow writes)
+# 额外可写根目录（除了 $TMPDIR 与 /tmp）
 allow_git_writes = true
 writable_roots = ["/Users/YOU/.pyenv/shims"]
-
-# Allow the command being run inside the sandbox to make outbound network
-# requests. Disabled by default.
+# 允许沙箱内命令访问网络，默认 false
 network_access = false
 ```
 
-To disable sandboxing altogether, specify `danger-full-access` like so:
+完全关闭沙箱：
 
 ```toml
-# same as `--sandbox danger-full-access`
+# 等同 --sandbox danger-full-access
 sandbox_mode = "danger-full-access"
 ```
 
-This is reasonable to use if Code is running in an environment that provides its own sandboxing (such as a Docker container) such that further sandboxing is unnecessary.
+在已有沙箱环境（如 Docker）或本机沙箱不受支持的环境（旧内核、Windows）下，可考虑使用该选项。
 
-Though using this option may also be necessary if you try to use Code in environments where its native sandboxing mechanisms are unsupported, such as older Linux kernels or on Windows.
+## 审批预设
 
-## Approval presets
+Code 提供三种审批预设：
 
-Code provides three main Approval Presets:
+- Read Only：可读文件与回答问题；写入、运行命令和联网需审批。
+- Auto：可在工作区内读写并运行命令；超出工作区或联网时请求审批。
+- Full Access：完全磁盘与网络访问，无提示，风险极高。
 
-- Read Only: Code can read files and answer questions; edits, running commands, and network access require approval.
-- Auto: Code can read files, make edits, and run commands in the workspace without approval; asks for approval outside the workspace or for network access.
-- Full Access: Full disk and network access without prompts; extremely risky.
+可结合 `--ask-for-approval` 与 `--sandbox` 在命令行进一步自定义。
 
-You can further customize how Code runs at the command line using the `--ask-for-approval` and `--sandbox` options.
+## MCP 服务器
 
-## MCP Servers
+可配置 [MCP 服务器](https://modelcontextprotocol.io/about) 以访问外部应用、资源或服务（如 [Playwright](https://github.com/microsoft/playwright-mcp)、[Figma](https://www.figma.com/blog/design-context-everywhere-you-build/)、[documentation](https://context7.com/) 等）。
 
-You can configure Code to use [MCP servers](https://modelcontextprotocol.io/about) to give Code access to external applications, resources, or services such as [Playwright](https://github.com/microsoft/playwright-mcp), [Figma](https://www.figma.com/blog/design-context-everywhere-you-build/), [documentation](https://context7.com/), and [more](https://github.com/mcp?utm_source=blog-source&utm_campaign=mcp-registry-server-launch-2025).
+### 传输配置
 
-### Server transport configuration
+每个服务器可设置 `startup_timeout_sec` 调整等待启动与返回工具列表的时长，默认 `10` 秒。`tool_timeout_sec` 限制单次工具调用运行时长（默认 `60` 秒），未设置时回退默认值。
 
-Each server may set `startup_timeout_sec` to adjust how long Code waits for it to start and respond to a tools listing. The default is `10` seconds.
-Similarly, `tool_timeout_sec` limits how long individual tool calls may run (default: `60` seconds), and Code will fall back to the default when this value is omitted.
-
-This config option is comparable to how Claude and Cursor define `mcpServers` in their respective JSON config files, though because Code uses TOML for its config language, the format is slightly different. For example, the following config in JSON:
+配置方式与 Claude、Cursor 的 `mcpServers` 类似，但使用 TOML。JSON 示例：
 
 ```json
 {
@@ -389,57 +341,70 @@ This config option is comparable to how Claude and Cursor define `mcpServers` in
     "server-name": {
       "command": "npx",
       "args": ["-y", "mcp-server"],
-      "env": {
-        "API_KEY": "value"
-      }
+      "env": { "API_KEY": "value" }
     }
   }
 }
 ```
 
-Should be represented as follows in `~/.code/config.toml` (Code will also read the legacy `~/.codex/config.toml` if it exists):
+在 `~/.code/config.toml` 中表示为（也会读取旧版 `~/.codex/config.toml`）：
 
 ```toml
-# The top-level table name must be `mcp_servers`
-# The sub-table name (`server-name` in this example) can be anything you would like.
+# 顶层表名必须为 mcp_servers
 [mcp_servers.server-name]
 command = "npx"
-# Optional
-args = ["-y", "mcp-server"]
-# Optional: propagate additional env vars to the MCP server.
-# A default whitelist of env vars will be propagated to the MCP server.
-# https://github.com/just-every/code/blob/main/code-rs/rmcp-client/src/utils.rs#L82
+args = ["-y", "mcp-server"]  # 可选
+# 传播给 MCP 服务器的额外环境变量（默认有白名单，见代码注释）
 env = { "API_KEY" = "value" }
 ```
 
-#### Streamable HTTP
+#### 可流式 HTTP
 
 ```toml
-# Streamable HTTP requires the experimental rmcp client
+# 需要实验性的 rmcp 客户端
 experimental_use_rmcp_client = true
 [mcp_servers.figma]
 url = "http://127.0.0.1:3845/mcp"
-# Optional bearer token to be passed into an `Authorization: Bearer <token>` header
-# Use this with caution because the token is in plaintext.
+# 可选 Bearer Token（明文存储，谨慎使用）
 bearer_token = "<token>"
 ```
 
-Refer to the MCP CLI commands for oauth login
+OAuth 登录细节参见 MCP CLI 命令。
 
-### Other configuration options
+### 其他配置
 
 ```toml
-# Optional: override the default 10s startup timeout
-startup_timeout_sec = 20
-# Optional: override the default 60s per-tool timeout
-tool_timeout_sec = 30
+startup_timeout_sec = 20  # 覆盖默认 10s
+tool_timeout_sec = 30     # 覆盖默认 60s
+```
+
+### 从 CLI 管理 MCP（实验性）
+
+```shell
+# 添加服务器（env 可重复；`--` 之后是启动命令）
+code mcp add docs -- docs-server --port 4000
+
+# 列出服务器
+code mcp list
+code mcp list --json
+
+# 查看单个服务器
+code mcp get docs
+code mcp get docs --json
+
+# 删除服务器
+code mcp remove docs
+
+# 登录/登出支持 oauth 的可流式 HTTP 服务器
+code mcp login SERVER_NAME
+code mcp logout SERVER_NAME
 ```
 
 ## subagents
 
-Sub-agents are orchestrated helper workflows you can trigger with slash commands (for example `/plan`, `/solve`, `/code`). Each entry under `[[subagents.commands]]` defines the slash command name, whether spawned agents run in read-only mode, which `agents` to launch, and extra guidance for both the orchestrator (Code) and the individual agents.
+子智能体是可通过斜杠命令触发的编排辅助流程（如 `/plan`、`/solve`、`/code`）。`[[subagents.commands]]` 中的每个条目定义命令名、是否只读、要启动的 `agents`，以及对编排器与子智能体的额外指导。
 
-By default (when no `[[agents]]` are configured) Code advertises these model slugs for multi-agent runs: `code-gpt-5.1`, `claude-sonnet-4.5`, `claude-opus-4.1`, `gemini-3-pro`, `gemini-2.5-pro`, `gemini-2.5-flash`, `qwen-3-coder`, `code-gpt-5.1-codex`, and `code-gpt-5.1-codex-mini`. The cloud counterpart, `cloud-gpt-5.1-codex`, only appears when `CODE_ENABLE_CLOUD_AGENT_MODEL=1` is set. You can override the list by defining `[[agents]]` entries or by specifying `agents = [ … ]` on a given `[[subagents.commands]]` entry.
+默认（未配置 `[[agents]]`）时，多智能体运行会宣告以下模型 slug：`code-gpt-5.1`、`claude-sonnet-4.5`、`claude-opus-4.1`、`gemini-3-pro`、`gemini-2.5-pro`、`gemini-2.5-flash`、`qwen-3-coder`、`code-gpt-5.1-codex`、`code-gpt-5.1-codex-mini`。云端版本 `cloud-gpt-5.1-codex` 仅在 `CODE_ENABLE_CLOUD_AGENT_MODEL=1` 时出现。可通过 `[[agents]]` 或在具体 `[[subagents.commands]]` 中设置 `agents = [...]` 覆盖列表。
 
 ```toml
 [[subagents.commands]]
@@ -450,14 +415,11 @@ orchestrator-instructions = "Coordinate a context sweep before coding. Ask each 
 agent-instructions = "Summarize the repository areas most relevant to the user's request. List file paths, rationale, and suggested follow-up scripts to run. Keep the reply under 2,000 tokens."
 ```
 
-With the example above you can run `/context` inside the TUI to create a summary cell that the main `/code` turn can reference later. Because `context-collector` is an ordinary agent, any command-line static analysis utilities it invokes (such as your blast radius tool) should be described in the `agent-instructions` so the orchestrator launches the right workflow. You can also customise the built-in commands by providing an entry with the same `name` (`plan`, `solve`, or `code`) and pointing their `agents` list at your long-context helper.
+在上述示例下，可在 TUI 运行 `/context` 生成摘要单元，供后续 `/code` 引用。`context-collector` 作为普通智能体，如需调用静态分析工具（例如“爆炸半径”工具），请在 `agent-instructions` 描述，以便编排器启动正确流程。你也可以用相同 `name`（`plan`、`solve`、`code`）覆盖内置命令，将 `agents` 指向你的长上下文助手。
 
 ## validation
 
-Controls the quick validation harness that runs before applying patches. The
-harness now activates automatically whenever at least one validation group is
-enabled. Use `[validation.groups]` for high-level toggles and the nested
-`[validation.tools]` table for per-tool overrides:
+控制应用补丁前的快速验证。只要至少一个验证分组启用，验证就会自动运行。使用 `[validation.groups]` 控制分组开关，`[validation.tools]` 控制具体工具：
 
 ```toml
 [validation.groups]
@@ -481,100 +443,64 @@ shfmt = true
 prettier = true
 ```
 
-Functional checks stay enabled by default to catch regressions in the touched
-code, while stylistic linters default to off so teams can opt in when they want
-formatting feedback.
+功能检查默认开启以捕获改动中的回归；风格类 linters 默认关闭，可按需开启。
 
-With functional checks enabled, Code automatically detects the languages
-affected by a patch and schedules the appropriate tools:
+启用功能检查后，Code 会根据补丁所涉语言自动安排工具：
 
-- `cargo-check` for Rust workspaces (scoped to touched manifests)
-- `tsc --noEmit` and `eslint --max-warnings=0` for TypeScript/JavaScript files
-- `mypy` and `pyright` for Python modules
-- `phpstan`/`psalm` for PHP projects with matching config or Composer entries
-- `golangci-lint run ./...` for Go modules alongside the existing JSON/TOML/YAML
-  syntax checks
+- Rust：`cargo-check`（限定受影响的 manifest）
+- TS/JS：`tsc --noEmit` 与 `eslint --max-warnings=0`
+- Python：`mypy` 与 `pyright`
+- PHP：`phpstan`/`psalm`（依据配置或 Composer 项）
+- Go：`golangci-lint run ./...`，并包含现有 JSON/TOML/YAML 语法检查
 
-Each entry under `[validation.tools]` can be toggled to disable a specific tool
-or to opt particular checks back in after disabling the entire group.
+在 `[validation.tools]` 中可关闭特定工具，或在禁用分组后单独重新启用。
 
-When enabled, Code can also run `actionlint` against modified workflows. This
-is configured under `[github]`:
+启用后还可对修改的 workflow 运行 `actionlint`，在 `[github]` 配置：
 
 ```toml
 [github]
 actionlint_on_patch = true
-# Optional: provide an explicit binary path
+# 可选：指定二进制路径
 actionlint_path = "/usr/local/bin/actionlint"
 ```
 
 ## disable_response_storage
 
-Currently, customers whose accounts are set to use Zero Data Retention (ZDR) must set `disable_response_storage` to `true` so that Code uses an alternative to the Responses API that works with ZDR:
+若账号启用 Zero Data Retention（ZDR），需将 `disable_response_storage` 设为 `true`，以便使用兼容 ZDR 的替代模式：
 
 ```toml
 disable_response_storage = true
 ```
 
-### Managing MCP servers from CLI (experimental)
-
-You can also manage these entries from the CLI:
-
-```shell
-# Add a server (env can be repeated; `--` separates the launcher command)
-code mcp add docs -- docs-server --port 4000
-
-# List configured servers (pretty table or JSON)
-code mcp list
-code mcp list --json
-
-# Show one server (table or JSON)
-code mcp get docs
-code mcp get docs --json
-
-# Remove a server
-code mcp remove docs
-
-# Log in to a streamable HTTP server that supports oauth
-code mcp login SERVER_NAME
-
-# Log out from a streamable HTTP server that supports oauth
-code mcp logout SERVER_NAME
-```
-
 ## shell_environment_policy
 
-Code spawns subprocesses (e.g. when executing a `local_shell` tool-call suggested by the assistant). By default it now passes **your full environment** to those subprocesses. You can tune this behavior via the **`shell_environment_policy`** block in `config.toml`:
+Code 运行子进程（如助手建议的 `local_shell` 工具调用）时默认继承**完整环境**。可通过 `config.toml` 中的 `shell_environment_policy` 调整：
 
 ```toml
 [shell_environment_policy]
-# inherit can be "all" (default), "core", or "none"
+# inherit 可为 "all"（默认）、"core" 或 "none"
 inherit = "core"
-# set to true to *skip* the filter for `"*KEY*"` and `"*TOKEN*"`
+# true 表示跳过对包含 KEY/TOKEN 的默认过滤
 ignore_default_excludes = false
-# exclude patterns (case-insensitive globs)
+# 不区分大小写的 glob 排除
 exclude = ["AWS_*", "AZURE_*"]
-# force-set / override values
+# 强制设置/覆盖的值
 set = { CI = "1" }
-# if provided, *only* vars matching these patterns are kept
+# 如设置，仅保留匹配任一模式的变量
 include_only = ["PATH", "HOME"]
 ```
 
-| Field                     | Type                 | Default | Description                                                                                                                                     |
-| ------------------------- | -------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `inherit`                 | string               | `all`   | Starting template for the environment:<br>`all` (clone full parent env), `core` (`HOME`, `PATH`, `USER`, …), or `none` (start empty).           |
-| `ignore_default_excludes` | boolean              | `false` | When `false`, Code removes any var whose **name** contains `KEY`, `SECRET`, or `TOKEN` (case-insensitive) before other rules run.              |
-| `exclude`                 | array<string>        | `[]`    | Case-insensitive glob patterns to drop after the default filter.<br>Examples: `"AWS_*"`, `"AZURE_*"`.                                           |
-| `set`                     | table<string,string> | `{}`    | Explicit key/value overrides or additions – always win over inherited values.                                                                   |
-| `include_only`            | array<string>        | `[]`    | If non-empty, a whitelist of patterns; only variables that match _one_ pattern survive the final step. (Generally used with `inherit = "all"`.) |
+| 字段                     | 类型                 | 默认     | 说明 |
+| ------------------------ | -------------------- | -------- | ---- |
+| `inherit`                | string               | `all`    | 环境继承模板：`all` 继承全部，`core` 仅核心变量（HOME、PATH、USER 等），`none` 表示空环境。 |
+| `ignore_default_excludes`| boolean              | `false`  | 为 `false` 时，先移除名称包含 `KEY`、`SECRET` 或 `TOKEN`（不区分大小写）的变量，再应用其他规则。 |
+| `exclude`                | array<string>        | `[]`     | 额外排除的 glob 模式，如 `"AWS_*"`、`"AZURE_*"`。 |
+| `set`                    | table<string,string> | `{}`     | 显式覆盖/新增的键值，优先级最高。 |
+| `include_only`           | array<string>        | `[]`     | 白名单模式列表；非空时仅保留匹配任一模式的变量（通常与 `inherit = "all"` 配合）。 |
 
-The patterns are **glob style**, not full regular expressions: `*` matches any
-number of characters, `?` matches exactly one, and character classes like
-`[A-Z]`/`[^0-9]` are supported. Matching is always **case-insensitive**. This
-syntax is documented in code as `EnvironmentVariablePattern` (see
-`core/src/config_types.rs`).
+模式为 **glob**（非正则），`*` 匹配任意长度，`?` 匹配单字符，`[A-Z]`/`[^0-9]` 等字符类可用，大小写不敏感。实现见 `core/src/config_types.rs` 中的 `EnvironmentVariablePattern`。
 
-If you just need a clean slate with a few custom entries you can write:
+若想只保留少数变量可写：
 
 ```toml
 [shell_environment_policy]
@@ -582,90 +508,42 @@ inherit = "none"
 set = { PATH = "/usr/bin", MY_FLAG = "1" }
 ```
 
-Currently, `CODEX_SANDBOX_NETWORK_DISABLED=1` is also added to the environment, assuming network is disabled. This is not configurable.
+当禁用网络时，环境中还会添加 `CODEX_SANDBOX_NETWORK_DISABLED=1`（不可配置）。
 
 ## otel
 
-Code can emit [OpenTelemetry](https://opentelemetry.io/) **log events** that
-describe each run: outbound API requests, streamed responses, user input,
-tool-approval decisions, and the result of every tool invocation. Export is
-**disabled by default** so local runs remain self-contained. Opt in by adding an
-`[otel]` table and choosing an exporter.
+Code 可输出描述每次运行的 [OpenTelemetry](https://opentelemetry.io/) **日志事件**（API 请求、流式响应、用户输入、工具审批等）。默认关闭，需在 `[otel]` 中选择导出方式：
 
 ```toml
 [otel]
-environment = "staging"   # defaults to "dev"
-exporter = "none"          # defaults to "none"; set to otlp-http or otlp-grpc to send events
-log_user_prompt = false    # defaults to false; redact prompt text unless explicitly enabled
+environment = "staging"     # 默认 "dev"
+exporter = "none"            # 默认 none；设置 otlp-http 或 otlp-grpc 以发送事件
+log_user_prompt = false       # 默认 false；除非显式开启，否则脱敏提示文本
 ```
 
-Code tags every exported event with `service.name = $ORIGINATOR` (the same
-value sent in the `originator` header, `code_cli_rs` by default), the CLI
-version, and an `env` attribute so downstream collectors can distinguish
-dev/staging/prod traffic. Only telemetry produced inside the `code_otel`
-crate—the events listed below—is forwarded to the exporter. Event names keep
-the `codex.*` prefix for backward compatibility with existing dashboards.
+所有事件会带上 `service.name = $ORIGINATOR`（默认 `code_cli_rs`）、CLI 版本与 `env` 属性，仅 `code_otel` crate 产生日志会被导出，并保留 `codex.*` 前缀以兼容现有看板。
 
-### Event catalog
+### 事件目录
 
-Every event shares a common set of metadata fields: `event.timestamp`,
-`conversation.id`, `app.version`, `auth_mode` (when available),
-`user.account_id` (when available), `terminal.type`, `model`, and `slug`.
+所有事件共享公共元数据：`event.timestamp`、`conversation.id`、`app.version`、`auth_mode`（如有）、`user.account_id`（如有）、`terminal.type`、`model`、`slug`。
 
-With OTEL enabled Code emits the following event types (in addition to the
-metadata above):
+启用 OTEL 后会产生：
 
-- `codex.conversation_starts`
-  - `provider_name`
-  - `reasoning_effort` (optional)
-  - `reasoning_summary`
-  - `context_window` (optional)
-  - `max_output_tokens` (optional)
-  - `auto_compact_token_limit` (optional)
-  - `approval_policy`
-  - `sandbox_policy`
-  - `mcp_servers` (comma-separated list)
-  - `active_profile` (optional)
-- `codex.api_request`
-  - `attempt`
-  - `duration_ms`
-  - `http.response.status_code` (optional)
-  - `error.message` (failures)
-- `codex.sse_event`
-  - `event.kind`
-  - `duration_ms`
-  - `error.message` (failures)
-  - `input_token_count` (responses only)
-  - `output_token_count` (responses only)
-  - `cached_token_count` (responses only, optional)
-  - `reasoning_token_count` (responses only, optional)
-  - `tool_token_count` (responses only)
-- `codex.user_prompt`
-  - `prompt_length`
-  - `prompt` (redacted unless `log_user_prompt = true`)
-- `codex.tool_decision`
-  - `tool_name`
-  - `call_id`
-  - `decision` (`approved`, `approved_for_session`, `denied`, or `abort`)
-  - `source` (`config` or `user`)
-- `codex.tool_result`
-  - `tool_name`
-  - `call_id` (optional)
-  - `arguments` (optional)
-  - `duration_ms` (execution time for the tool)
-  - `success` (`"true"` or `"false"`)
-  - `output`
+- `codex.conversation_starts`：包含 `provider_name`、`reasoning_effort`（可选）、`reasoning_summary`、`context_window`、`max_output_tokens`、`auto_compact_token_limit`、`approval_policy`、`sandbox_policy`、`mcp_servers`、`active_profile`（可选）
+- `codex.api_request`：`attempt`、`duration_ms`、`http.response.status_code`（可选）、`error.message`（失败时）
+- `codex.sse_event`：`event.kind`、`duration_ms`、`error.message`（失败时）、`input_token_count`/`output_token_count`/`cached_token_count`（可选）/`reasoning_token_count`（可选）/`tool_token_count`
+- `codex.user_prompt`：`prompt_length`、`prompt`（除非 `log_user_prompt=true` 否则脱敏）
+- `codex.tool_decision`：`tool_name`、`call_id`、`decision`（`approved`、`approved_for_session`、`denied`、`abort`）、`source`（`config` 或 `user`）
+- `codex.tool_result`：`tool_name`、`call_id`（可选）、`arguments`（可选）、`duration_ms`、`success`（"true"/"false"）、`output`
 
-These event shapes may change as we iterate.
+事件格式可能随迭代调整。
 
-### Choosing an exporter
+### 选择导出器
 
-Set `otel.exporter` to control where events go:
+通过 `otel.exporter` 指定事件去向：
 
-- `none` – leaves instrumentation active but skips exporting. This is the
-  default.
-- `otlp-http` – posts OTLP log records to an OTLP/HTTP collector. Specify the
-  endpoint, protocol, and headers your collector expects:
+- `none`：保持插桩但不导出（默认）。
+- `otlp-http`：以 OTLP/HTTP 发送日志，需指定 endpoint、protocol、headers：
 
   ```toml
   [otel]
@@ -676,8 +554,7 @@ Set `otel.exporter` to control where events go:
   }}
   ```
 
-- `otlp-grpc` – streams OTLP log records over gRPC. Provide the endpoint and any
-  metadata headers:
+- `otlp-grpc`：以 gRPC 发送 OTLP 日志，需要 endpoint 与可选 headers：
 
   ```toml
   [otel]
@@ -687,9 +564,7 @@ Set `otel.exporter` to control where events go:
   }}
   ```
 
-Both OTLP exporters accept an optional `tls` block so you can trust a custom CA
-or enable mutual TLS. Relative paths are resolved against `~/.code/` (legacy
-`~/.codex/` is also read):
+两种导出器都可接受可选 `tls` 块以信任自定义 CA 或启用 mTLS。相对路径基于 `~/.code/`（也读取旧版 `~/.codex/`）：
 
 ```toml
 [otel]
@@ -705,18 +580,13 @@ exporter = { otlp-http = {
 }}
 ```
 
-If the exporter is `none` nothing is written anywhere; otherwise you must run or point to your
-own collector. All exporters run on a background batch worker that is flushed on
-shutdown.
+导出器为 `none` 时不会写出数据；否则需自行运行或指向收集器。所有导出在后台批处理，关闭时会刷新。
 
-If you build Code from source the OTEL crate is still behind an `otel` feature
-flag; the official prebuilt binaries ship with the feature enabled. When the
-feature is disabled the telemetry hooks become no-ops so the CLI continues to
-function without the extra dependencies.
+源码构建时 OTEL crate 仍在 `otel` feature 后；官方预编译二进制默认启用。禁用时 telemetry 钩子为空操作，CLI 功能不受影响。
 
 ## notify
 
-Specify a program that will be executed to get notified about events generated by Code. Note that the program will receive the notification argument as a string of JSON, e.g.:
+指定一个程序接收 Code 产生的事件通知。程序会收到 JSON 字符串参数，例如：
 
 ```json
 {
@@ -727,194 +597,124 @@ Specify a program that will be executed to get notified about events generated b
 }
 ```
 
-The `"type"` property will always be set. Currently, `"agent-turn-complete"` is the only notification type that is supported.
+目前仅支持 `"agent-turn-complete"` 类型。
 
-As an example, here is a Python script that parses the JSON and decides whether to show a desktop push notification using [terminal-notifier](https://github.com/julienXX/terminal-notifier) on macOS:
+示例：在 macOS 上使用 [terminal-notifier](https://github.com/julienXX/terminal-notifier) 发送桌面通知的 Python 脚本（略）。
 
-```python
-#!/usr/bin/env python3
-
-import json
-import subprocess
-import sys
-
-
-def main() -> int:
-    if len(sys.argv) != 2:
-        print("Usage: notify.py <NOTIFICATION_JSON>")
-        return 1
-
-    try:
-        notification = json.loads(sys.argv[1])
-    except json.JSONDecodeError:
-        return 1
-
-    match notification_type := notification.get("type"):
-        case "agent-turn-complete":
-            assistant_message = notification.get("last-assistant-message")
-            if assistant_message:
-                title = f"Code: {assistant_message}"
-            else:
-                title = "Code: Turn Complete!"
-            input_messages = notification.get("input_messages", [])
-            message = " ".join(input_messages)
-            title += message
-        case _:
-            print(f"not sending a push notification for: {notification_type}")
-            return 0
-
-    subprocess.check_output(
-        [
-            "terminal-notifier",
-            "-title",
-            title,
-            "-message",
-            message,
-            "-group",
-            "code",
-            "-ignoreDnD",
-            "-activate",
-            "com.googlecode.iterm2",
-        ]
-    )
-
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())
-```
-
-To have Code use this script for notifications, you would configure it via `notify` in `~/.code/config.toml` (legacy `~/.codex/config.toml` is still read) using the appropriate path to `notify.py` on your computer:
+将脚本用于通知，可在 `~/.code/config.toml`（兼容 `~/.codex/config.toml`）配置：
 
 ```toml
 notify = ["python3", "/Users/mbolin/.code/notify.py"]
 ```
 
 > [!NOTE]
-> Use `notify` for automation and integrations: Code invokes your external program with a single JSON argument for each event, independent of the TUI. If you only want lightweight desktop notifications while using the TUI, prefer `tui.notifications`, which uses terminal escape codes and requires no external program. You can enable both; `tui.notifications` covers in‑TUI alerts (e.g., approval prompts), while `notify` is best for system‑level hooks or custom notifiers. Currently, `notify` emits only `agent-turn-complete`, whereas `tui.notifications` supports `agent-turn-complete` and `approval-requested` with optional filtering.
+> `notify` 适合自动化与集成：Code 每个事件调用外部程序并传递 JSON，与 TUI 独立。若只需 TUI 内的轻量通知，建议使用 `tui.notifications`（基于终端转义，无需外部程序）。两者可同时开启；`tui.notifications` 覆盖 TUI 内提醒（如审批提示），`notify` 适合系统级钩子或自定义提醒。目前 `notify` 仅发出 `agent-turn-complete`，而 `tui.notifications` 还支持 `approval-requested` 并可筛选。
 
 ## history
 
-By default, the Code CLI records messages sent to the model in `$CODE_HOME/history.jsonl` (legacy `$CODEX_HOME/history.jsonl` is also read). On UNIX, the file permissions are set to `o600`, so it should only be readable and writable by the owner.
+默认情况下，Code CLI 会将发送给模型的消息记录在 `$CODE_HOME/history.jsonl`（兼容读取 `$CODEX_HOME/history.jsonl`）。在 UNIX 下文件权限为 `o600`。
 
-To disable this behavior, configure `[history]` as follows:
+禁用记录：
 
 ```toml
 [history]
-persistence = "none"  # "save-all" is the default value
+persistence = "none"  # 默认 "save-all"
 ```
 
-## Context timeline preview
+## Context timeline 预览
 
-The structured environment context timeline (baseline + deltas + browser
-snapshots) is gated behind the `CTX_UI` environment flag. Set `CTX_UI=1`
-before launching Code to exercise the preview flow. Outside of this
-developer flag the classic `== System Status ==` payload remains in place.
+结构化的环境上下文时间线（baseline + deltas + browser snapshots）受环境变量 `CTX_UI` 控制。启动 Code 前设置 `CTX_UI=1` 体验预览。未开启时仍使用经典的 `== System Status ==` 负载。
 
 ## file_opener
 
-Identifies the editor/URI scheme to use for hyperlinking citations in model output. If set, citations to files in the model output will be hyperlinked using the specified URI scheme so they can be ctrl/cmd-clicked from the terminal to open them.
+指定用于模型输出中引用文件的超链接方案。设置后，模型输出中的文件引用会被重写为对应 URI，便于在终端中 Ctrl/Cmd+Click 打开。
 
-For example, if the model output includes a reference such as `【F:/home/user/project/main.py†L42-L50】`, then this would be rewritten to link to the URI `vscode://file/home/user/project/main.py:42`.
+可选值：
 
-Note this is **not** a general editor setting (like `$EDITOR`), as it only accepts a fixed set of values:
-
-- `"vscode"` (default)
+- `"vscode"`（默认）
 - `"vscode-insiders"`
 - `"windsurf"`
 - `"cursor"`
-- `"none"` to explicitly disable this feature
+- `"none"` 明确禁用
 
-Currently, `"vscode"` is the default, though Code does not verify VS Code is installed. As such, `file_opener` may default to `"none"` or something else in the future.
+目前默认 `"vscode"`，但不会检查 VS Code 是否安装，未来可能调整默认值。
 
 ## hide_agent_reasoning
 
-Code intermittently emits "reasoning" events that show the model's internal "thinking" before it produces a final answer. Some users may find these events distracting, especially in CI logs or minimal terminal output.
-
-Setting `hide_agent_reasoning` to `true` suppresses these events in **both** the TUI as well as the headless `exec` sub-command:
+Code 会间歇输出“reasoning”事件显示模型内部思考。有些场景（如 CI 日志）可能不需要。将其设为 `true` 可在 TUI 与无头 `exec` 中同时隐藏：
 
 ```toml
-hide_agent_reasoning = true   # defaults to false
+hide_agent_reasoning = true   # 默认 false
 ```
 
 ## show_raw_agent_reasoning
 
-Surfaces the model’s raw chain-of-thought ("raw reasoning content") when available.
+在可用时展示模型的原始 chain-of-thought。
 
-Notes:
+注意：
 
-- Only takes effect if the selected model/provider actually emits raw reasoning content. Many models do not. When unsupported, this option has no visible effect.
-- Raw reasoning may include intermediate thoughts or sensitive context. Enable only if acceptable for your workflow.
-
-Example:
+- 仅当模型/提供商实际返回原始推理内容时生效，许多模型不支持。
+- 原始推理可能包含中间想法或敏感上下文，请在可接受的情况下开启。
 
 ```toml
-show_raw_agent_reasoning = true  # defaults to false
+show_raw_agent_reasoning = true  # 默认 false
 ```
 
 ## model_context_window
 
-The size of the context window for the model, in tokens.
-
-In general, Code knows the context window for the most common OpenAI models, but if you are using a new model with an old version of the Code CLI, then you can use `model_context_window` to tell Code what value to use to determine how much context is left during a conversation.
+模型的上下文窗口大小（token）。对于不在已知列表的新模型，可用此项告知 Code 剩余上下文计算应使用的值。
 
 ## model_max_output_tokens
 
-This is analogous to `model_context_window`, but for the maximum number of output tokens for the model.
+与 `model_context_window` 类似，但用于模型的最大输出 token 数。
 
 ## project_doc_max_bytes
 
-Maximum number of bytes to read from an `AGENTS.md` file to include in the instructions sent with the first turn of a session. Defaults to 32 KiB.
+从 `AGENTS.md` 读取的最大字节数，包含在会话首轮指令中，默认 32 KiB。
 
 ## project_doc_fallback_filenames
 
-Ordered list of additional filenames to look for when `AGENTS.md` is missing at a given directory level. The CLI always checks `AGENTS.md` first; the configured fallbacks are tried in the order provided. This lets monorepos that already use alternate instruction files (for example, `CLAUDE.md`) work out of the box while you migrate to `AGENTS.md` over time.
+当某级目录缺少 `AGENTS.md` 时按顺序尝试的备用文件名。CLI 总是先查找 `AGENTS.md`，再按提供顺序尝试。便于单仓库逐步迁移到 `AGENTS.md`。
 
 ```toml
 project_doc_fallback_filenames = ["CLAUDE.md", ".exampleagentrules.md"]
 ```
 
-We recommend migrating instructions to AGENTS.md; other filenames may reduce model performance.
+建议最终迁移到 AGENTS.md；其他文件名可能降低模型表现。
 
 ## tui
 
-Options that are specific to the TUI.
+TUI 专属选项：
 
 ```toml
 [tui]
-# Send desktop notifications when approvals are required or a turn completes.
-# Defaults to false.
+# 当需要审批或轮次完成时发送桌面通知，默认 false
 notifications = true
-
-# You can optionally filter to specific notification types.
-# Available types are "agent-turn-complete" and "approval-requested".
+# 可选按类型过滤（"agent-turn-complete"、"approval-requested"）
 notifications = [ "agent-turn-complete", "approval-requested" ]
-
-# Enable desktop notifications for approval requests only
+# 仅审批通知
 notifications = [ "approval-requested" ]
 ```
 
 > [!NOTE]
-> Code emits desktop notifications using terminal escape codes. Not all terminals support these (notably, macOS Terminal.app and VS Code's terminal do not support custom notifications. iTerm2, Ghostty and WezTerm do support these notifications).
+> Code 通过终端转义发送桌面通知，并非所有终端都支持（macOS Terminal.app、VS Code 内置终端不支持；iTerm2、Ghostty、WezTerm 支持）。
+>
+> `tui.notifications` 仅作用于当前 TUI 会话。若需跨环境或与系统通知集成，请使用顶层 `notify` 运行外部程序。两者相互独立，可同时使用。
 
-> [!NOTE]
-> `tui.notifications` is built‑in and limited to the TUI session. For programmatic or cross‑environment notifications—or to integrate with OS‑specific notifiers—use the top-level `notify` option to run an external program that receives event JSON. The two settings are independent and can be used together.
+### Auto Drive 观察者
 
-### Auto Drive Observer
-
-Code keeps long-running Auto Drive sessions in check with a lightweight observer thread. Configure its cadence with the top-level `auto_drive_observer_cadence` key (default `5`). After every *n* completed requests the observer reviews the coordinator/CLI transcript, emits telemetry, and—if necessary—suggests a corrected prompt or follow-up guidance. Setting the value to `0` disables the observer entirely.
+为长时间 Auto Drive 运行提供轻量观察线程。用顶层 `auto_drive_observer_cadence`（默认 `5`）配置节奏；每完成 n 个请求就审阅记录、发出遥测并在需要时给出修正提示。设为 `0` 关闭观察者。
 
 ```toml
-# Run the observer after every third Auto Drive request
+# 每 3 个 Auto Drive 请求运行一次观察者
 auto_drive_observer_cadence = 3
 ```
 
-When the observer reports `status = "failing"`, the TUI banner highlights the intervention, updates the pending prompt when provided, and records guidance for future coordinator turns.
+当观察者报告 `status = "failing"` 时，TUI 横幅会突出干预并更新待发提示（如有），同时记录后续指导。
 
 ## Project Hooks
 
-Use the `[projects]` table to scope settings to a specific workspace path. In addition to `trust_level`, `approval_policy`, and `always_allow_commands`, you can attach lifecycle hooks that run commands automatically when notable events occur.
+使用 `[projects]` 按工作区路径限定设置。除 `trust_level`、`approval_policy`、`always_allow_commands` 外，还可挂载生命周期钩子，在特定事件自动运行命令。
 
 ```toml
 [projects."/Users/me/src/my-app"]
@@ -931,18 +731,18 @@ event = "tool.after"
 run = "npm run lint -- --changed"
 ```
 
-Supported hook events:
+支持的事件：
 
-- `session.start`: after the session is configured (once per launch)
-- `session.end`: before shutdown completes
-- `tool.before`: immediately before each exec/tool command runs
-- `tool.after`: once an exec/tool command finishes (regardless of exit code)
-- `file.before_write`: right before an `apply_patch` is applied
-- `file.after_write`: after an `apply_patch` completes and diffs are emitted
+- `session.start`：会话配置完成后（每次启动一次）
+- `session.end`：关闭前
+- `tool.before`：每个 exec/工具命令运行前
+- `tool.after`：每个 exec/工具命令完成后（无论退出码）
+- `file.before_write`：应用 `apply_patch` 前
+- `file.after_write`：`apply_patch` 完成并输出 diff 后
 
-Hook commands run inside the same sandbox mode as the session and appear in the TUI as their own exec cells. Failures are surfaced as background events but do not block the main task. Each invocation receives environment variables such as `CODE_HOOK_EVENT`, `CODE_HOOK_NAME`, `CODE_HOOK_INDEX`, `CODE_HOOK_CALL_ID`, `CODE_HOOK_PAYLOAD` (JSON describing the context), `CODE_SESSION_CWD`, and—when applicable—`CODE_HOOK_SOURCE_CALL_ID`. Hooks may also set `cwd`, provide additional `env` entries, and specify `timeout_ms`.
+钩子在与会话相同的沙箱模式下运行，并在 TUI 中显示为独立 exec 单元。失败会作为后台事件提示，但不阻塞主任务。每次调用会收到环境变量，如 `CODE_HOOK_EVENT`、`CODE_HOOK_NAME`、`CODE_HOOK_INDEX`、`CODE_HOOK_CALL_ID`、`CODE_HOOK_PAYLOAD`（JSON，上下文描述）、`CODE_SESSION_CWD`，以及适用时的 `CODE_HOOK_SOURCE_CALL_ID`。钩子也可设置 `cwd`、额外 `env` 与 `timeout_ms`。
 
-Example `tool.after` payload:
+示例 `tool.after` 载荷：
 
 ```json
 {
@@ -957,80 +757,3 @@ Example `tool.after` payload:
   "timed_out": false
 }
 ```
-
-## Project Commands
-
-Define project-scoped commands under `[[projects."<path>".commands]]`. Each command needs a unique `name` and either an array (`command`) or string (`run`) describing how to invoke it. Optional fields include `description`, `cwd`, `env`, and `timeout_ms`.
-
-```toml
-[[projects."/Users/me/src/my-app".commands]]
-name = "setup"
-description = "Install dependencies"
-run = ["pnpm", "install"]
-
-[[projects."/Users/me/src/my-app".commands]]
-name = "unit"
-run = "cargo test --lib"
-```
-
-Project commands appear in the TUI via `/cmd <name>` and run through the standard execution pipeline. During execution Code sets `CODE_PROJECT_COMMAND_NAME`, `CODE_PROJECT_COMMAND_DESCRIPTION` (when provided), and `CODE_SESSION_CWD` so scripts can tailor their behaviour.
-
-## Config reference
-
-| Key | Type / Values | Notes |
-| --- | --- | --- |
-| `model` | string | Model to use (e.g., `gpt-5.1-codex`). |
-| `model_provider` | string | Provider id from `model_providers` (default: `openai`). |
-| `model_context_window` | number | Context window tokens. |
-| `model_max_output_tokens` | number | Max output tokens. |
-| `approval_policy` | `untrusted` \| `on-failure` \| `on-request` \| `never` | When to prompt for approval. |
-| `sandbox_mode` | `read-only` \| `workspace-write` \| `danger-full-access` | OS sandbox policy. |
-| `sandbox_workspace_write.writable_roots` | array<string> | Extra writable roots in workspace‑write. |
-| `sandbox_workspace_write.network_access` | boolean | Allow network in workspace‑write (default: false). |
-| `sandbox_workspace_write.exclude_tmpdir_env_var` | boolean | Exclude `$TMPDIR` from writable roots (default: false). |
-| `sandbox_workspace_write.exclude_slash_tmp` | boolean | Exclude `/tmp` from writable roots (default: false). |
-| `disable_response_storage` | boolean | Required for ZDR orgs. |
-| `notify` | array<string> | External program for notifications. |
-| `instructions` | string | Currently ignored; use `experimental_instructions_file` or `AGENTS.md`. |
-| `mcp_servers.<id>.command` | string | MCP server launcher command. |
-| `mcp_servers.<id>.args` | array<string> | MCP server args. |
-| `mcp_servers.<id>.env` | map<string,string> | MCP server env vars. |
-| `mcp_servers.<id>.startup_timeout_sec` | number | Startup timeout in seconds (default: 10). Timeout is applied both for initializing MCP server and initially listing tools. |
-| `mcp_servers.<id>.tool_timeout_sec` | number | Per-tool timeout in seconds (default: 60). Accepts fractional values; omit to use the default. |
-| `model_providers.<id>.name` | string | Display name. |
-| `model_providers.<id>.base_url` | string | API base URL. |
-| `model_providers.<id>.env_key` | string | Env var for API key. |
-| `model_providers.<id>.wire_api` | `chat` \| `responses` | Protocol used (default: `chat`). |
-| `model_providers.<id>.query_params` | map<string,string> | Extra query params (e.g., Azure `api-version`). |
-| `model_providers.<id>.http_headers` | map<string,string> | Additional static headers. |
-| `model_providers.<id>.env_http_headers` | map<string,string> | Headers sourced from env vars. |
-| `model_providers.<id>.request_max_retries` | number | Per‑provider HTTP retry count (default: 4). |
-| `model_providers.<id>.stream_max_retries` | number | SSE stream retry count (default: 5). |
-| `model_providers.<id>.stream_idle_timeout_ms` | number | SSE idle timeout (ms) (default: 300000). |
-| `project_doc_max_bytes` | number | Max bytes to read from `AGENTS.md`. |
-| `projects.<path>.trust_level` | string | Mark project/worktree as trusted (only `"trusted"` is recognized). |
-| `projects.<path>.hooks` | array<table> | Lifecycle hooks for that workspace (see "Project Hooks"). |
-| `projects.<path>.commands` | array<table> | Project commands exposed via `/cmd`. |
-| `profile` | string | Active profile name. |
-| `profiles.<name>.*` | various | Profile‑scoped overrides of the same keys. |
-| `history.persistence` | `save-all` \| `none` | History file persistence (default: `save-all`). |
-| `history.max_bytes` | number | Currently ignored (not enforced). |
-| `file_opener` | `vscode` \| `vscode-insiders` \| `windsurf` \| `cursor` \| `none` | URI scheme for clickable citations (default: `vscode`). |
-| `tui` | table | TUI‑specific options. |
-| `tui.notifications` | boolean \| array<string> | Enable desktop notifications in the tui (default: false). |
-| `hide_agent_reasoning` | boolean | Hide model reasoning events. |
-| `show_raw_agent_reasoning` | boolean | Show raw reasoning (when available). |
-| `model_reasoning_effort` | `minimal` \| `low` \| `medium` \| `high` | Responses API reasoning effort. |
-| `model_reasoning_summary` | `auto` \| `concise` \| `detailed` \| `none` | Reasoning summaries. |
-| `model_verbosity` | `low` \| `medium` \| `high` | GPT‑5 text verbosity (Responses API). |
-| `model_supports_reasoning_summaries` | boolean | Force‑enable reasoning summaries. |
-| `chatgpt_base_url` | string | Base URL for ChatGPT auth flow. |
-| `experimental_resume` | string (path) | Resume JSONL path (internal/experimental). |
-| `experimental_instructions_file` | string (path) | Replace built‑in instructions (experimental). |
-| `experimental_use_exec_command_tool` | boolean | Use experimental exec command tool. |
-| `use_experimental_reasoning_summary` | boolean | Use experimental summary for reasoning chain. |
-| `responses_originator_header_internal_override` | string | Override `originator` header value. |
-| `tools.web_search` | boolean | Enable web search tool (alias: `web_search_request`) (default: false). |
-| `tools.web_search_allowed_domains` | array<string> | Optional allow-list for web search (filters.allowed_domains). |
-
-<!-- markdownlint-enable MD012 MD013 MD028 MD033 -->

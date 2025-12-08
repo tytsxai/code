@@ -1,45 +1,45 @@
-## Non-interactive mode
+## 非交互模式
 
-Use Every Code in non-interactive mode to automate common workflows.
+使用 Every Code 的非交互模式自动化常见流程。
 
 ```shell
 code exec "count the total number of lines of code in this project"
 ```
 
-In non-interactive mode, Code does not ask for command or edit approvals. By default it runs in `read-only` mode, so it cannot edit files or run commands that require network access.
+在非交互模式下，Code 不会请求命令或编辑审批。默认在 `read-only` 模式运行，无法修改文件或执行需要网络的命令。
 
-Use `code exec --full-auto` to allow file edits. Use `code exec --sandbox danger-full-access` to allow edits and networked commands.
+使用 `code exec --full-auto` 允许文件修改。使用 `code exec --sandbox danger-full-access` 允许修改与联网命令。
 
-### Default output mode
+### 默认输出模式
 
-By default, Code streams its activity to stderr and only writes the final message from the agent to stdout. This makes it easier to pipe `code exec` into another tool without extra filtering.
+默认情况下，Code 将活动流式输出到 stderr，只把智能体的最终消息写到 stdout。这样更易将 `code exec` 管道到其他工具而无需额外过滤。
 
-To write the output of `code exec` to a file, in addition to using a shell redirect like `>`, there is also a dedicated flag to specify an output file: `-o`/`--output-last-message`.
+若要把 `code exec` 的输出写入文件，除了使用重定向 `>`，还可使用专用参数 `-o`/`--output-last-message` 指定输出文件。
 
-### JSON output mode
+### JSON 输出模式
 
-`code exec` supports a `--json` mode that streams events to stdout as JSON Lines (JSONL) while the agent runs.
+`code exec` 支持 `--json` 模式，在智能体运行时将事件以 JSON Lines（JSONL）流式写到 stdout。
 
-Supported event types:
+支持的事件类型：
 
-- `thread.started` - when a thread is started or resumed.
-- `turn.started` - when a turn starts. A turn encompasses all events between the user message and the assistant response.
-- `turn.completed` - when a turn completes; includes token usage.
-- `turn.failed` - when a turn fails; includes error details.
-- `item.started`/`item.updated`/`item.completed` - when a thread item is added/updated/completed.
+- `thread.started` —— 线程启动或恢复时。
+- `turn.started` —— 轮次开始时。一次轮次包含用户消息到助手回复之间的所有事件。
+- `turn.completed` —— 轮次完成时；包含 token 用量。
+- `turn.failed` —— 轮次失败时；包含错误详情。
+- `item.started`/`item.updated`/`item.completed` —— 线程项新增/更新/完成时。
 
-Supported item types:
+支持的 item 类型：
 
-- `assistant_message` - assistant message.
-- `reasoning` - a summary of the assistant's thinking.
-- `command_execution` - assistant executing a command.
-- `file_change` - assistant making file changes.
-- `mcp_tool_call` - assistant calling an MCP tool.
-- `web_search` - assistant performing a web search.
+- `assistant_message` —— 助手消息。
+- `reasoning` —— 助手思考摘要。
+- `command_execution` —— 助手执行命令。
+- `file_change` —— 助手修改文件。
+- `mcp_tool_call` —— 助手调用 MCP 工具。
+- `web_search` —— 助手执行网络搜索。
 
-Typically, an `assistant_message` is added at the end of the turn.
+通常在轮次末尾会添加一个 `assistant_message`。
 
-Sample output:
+示例输出：
 
 ```jsonl
 {"type":"thread.started","thread_id":"0199a213-81c0-7800-8aa1-bbab2a035a53"}
@@ -52,13 +52,13 @@ Sample output:
 {"type":"turn.completed","usage":{"input_tokens":24763,"cached_input_tokens":24448,"output_tokens":122}}
 ```
 
-### Structured output
+### 结构化输出
 
-By default, the agent responds with natural language. Use `--output-schema` to provide a JSON Schema that defines the expected JSON output.
+默认情况下，智能体以自然语言回复。使用 `--output-schema` 提供 JSON Schema 来定义期望的 JSON 输出。
 
-The JSON Schema must follow the [strict schema rules](https://platform.openai.com/docs/guides/structured-outputs).
+JSON Schema 必须遵循[严格 Schema 规则](https://platform.openai.com/docs/guides/structured-outputs)。
 
-Sample schema:
+示例 Schema：
 
 ```json
 {
@@ -79,34 +79,34 @@ code exec "Extract details of the project" --output-schema ~/schema.json
 {"project_name":"Every Code CLI","programming_languages":["Rust","TypeScript","Shell"]}
 ```
 
-Combine `--output-schema` with `-o` to only print the final JSON output. You can also pass a file path to `-o` to save the JSON output to a file.
+将 `--output-schema` 与 `-o` 组合，可只输出最终 JSON。也可以给 `-o` 传文件路径以保存 JSON。
 
-### Git repository requirement
+### Git 仓库要求
 
-Code requires a Git repository to avoid destructive changes. To disable this check, use `code exec --skip-git-repo-check`.
+Code 需要在 Git 仓库中运行以避免破坏性更改。要禁用此检查，使用 `code exec --skip-git-repo-check`。
 
-### Resuming non-interactive sessions
+### 恢复非交互会话
 
-Resume a previous non-interactive session with `code exec resume <SESSION_ID>` or `code exec resume --last`. This preserves conversation context so you can ask follow-up questions or give new tasks to the agent.
+使用 `code exec resume <SESSION_ID>` 或 `code exec resume --last` 恢复之前的非交互会话。会保留对话上下文，便于继续提问或下达新任务。
 
 ```shell
 code exec "Review the change, look for use-after-free issues"
 code exec resume --last "Fix use-after-free issues"
 ```
 
-Only the conversation context is preserved; you must still provide flags to customize Code behavior.
+仅对话上下文会被保留；你仍需提供参数以自定义 Code 的行为。
 
 ```shell
 code exec --model gpt-5.1-codex --json "Review the change, look for use-after-free issues"
 code exec --model gpt-5.1 --json resume --last "Fix use-after-free issues"
 ```
 
-## Authentication
+## 认证
 
-By default, `code exec` uses the same authentication method as the TUI and VSCode extension. You can override the API key by setting the `CODEX_API_KEY` environment variable.
+默认情况下，`code exec` 使用与 TUI 与 VSCode 扩展相同的认证方式。可通过环境变量 `CODEX_API_KEY` 覆盖 API Key。
 
 ```shell
 CODEX_API_KEY=your-api-key-here code exec "Fix merge conflict"
 ```
 
-NOTE: `CODEX_API_KEY` is only supported in `code exec`.
+注意：`CODEX_API_KEY` 仅在 `code exec` 中受支持。

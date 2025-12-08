@@ -1,57 +1,57 @@
-## Sandbox & approvals
+## 沙箱与审批
 
-### Approval modes
+### 审批模式
 
-We've chosen a powerful default for how Code works on your computer: `Auto`. In this approval mode, Code can read files, make edits, and run commands in the working directory automatically. However, Code will need your approval to work outside the working directory or access network.
+默认模式为 `Auto`：Code 可自动读取文件、修改并在工作目录运行命令，但在访问工作区外或联网时需你的批准。
 
-When you just want to chat, or if you want to plan before diving in, you can switch to `Read Only` mode with the `/approvals` command.
+如果只想聊天或先规划，可用 `/approvals` 切换到 `Read Only` 模式。
 
-If you need Code to read files, make edits, and run commands with network access, without approval, you can use `Full Access`. Exercise caution before doing so.
+需要在无审批的情况下读取文件、修改并联网执行命令时，可使用 `Full Access`，请谨慎操作。
 
-#### Defaults and recommendations
+#### 默认与推荐
 
-- Code runs in a sandbox by default with strong guardrails: it prevents editing files outside the workspace and blocks network access unless enabled.
-- On launch, Code detects whether the folder is version-controlled and recommends:
-  - Version-controlled folders: `Auto` (workspace write + on-request approvals)
-  - Non-version-controlled folders: `Read Only`
-- The workspace includes the current directory and temporary directories like `/tmp`. Use the `/status` command to see which directories are in the workspace.
-- You can set these explicitly:
+- Code 默认在沙箱中运行，带有严格护栏：阻止工作区外写入并默认禁用网络。
+- 启动时会检测目录是否受版本控制并建议：
+  - 受版本控制：`Auto`（workspace write + on-request approvals）
+  - 非版本控制：`Read Only`
+- 工作区包含当前目录与 `/tmp` 等临时目录。用 `/status` 查看哪些目录在工作区内。
+- 可显式设置：
   - `code --sandbox workspace-write --ask-for-approval on-request`
   - `code --sandbox read-only --ask-for-approval on-request`
 
-### Can I run without ANY approvals?
+### 可以完全不弹审批吗？
 
-Yes, you can disable all approval prompts with `--ask-for-approval never`. This option works with all `--sandbox` modes, so you still have full control over Code's level of autonomy. It will make its best attempt with whatever constraints you provide.
+可以。`--ask-for-approval never` 会关闭所有审批提示，与任意 `--sandbox` 组合使用。Code 会在你给定的约束下尽力完成任务。
 
-### Common sandbox + approvals combinations
+### 常见沙箱 + 审批组合
 
-| Intent                             | Flags                                                                                       | Effect                                                                                                                                                |
-| ---------------------------------- | ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Safe read-only browsing            | `--sandbox read-only --ask-for-approval on-request`                                         | Code can read files and answer questions. Code requires approval to make edits, run commands, or access network.                                      |
-| Read-only non-interactive (CI)     | `--sandbox read-only --ask-for-approval never`                                              | Reads only; never escalates                                                                                                                           |
-| Let it edit the repo, ask if risky | `--sandbox workspace-write --ask-for-approval on-request`                                   | Code can read files, make edits, and run commands in the workspace. Code requires approval for actions outside the workspace or for network access.   |
-| Auto (preset)                      | `--full-auto` (equivalent to `--sandbox workspace-write` + `--ask-for-approval on-failure`) | Code can read files, make edits, and run commands in the workspace. Code requires approval when a sandboxed command fails or needs escalation.        |
-| YOLO (not recommended)             | `--dangerously-bypass-approvals-and-sandbox` (alias: `--yolo`)                              | No sandbox; no prompts                                                                                                                                |
+| 意图                               | 参数                                                                                      | 效果                                                                                                             |
+| ---------------------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| 安全只读浏览                       | `--sandbox read-only --ask-for-approval on-request`                                       | Code 可读文件并回答问题；修改、运行命令或联网需审批。                                                            |
+| 只读的非交互（CI）                 | `--sandbox read-only --ask-for-approval never`                                            | 仅读取，从不升级。                                                                                               |
+| 允许改动仓库，风险时再询问         | `--sandbox workspace-write --ask-for-approval on-request`                                 | 工作区内可读写并运行命令；工作区外或联网需审批。                                                                  |
+| Auto 预设                          | `--full-auto`（等同 `--sandbox workspace-write` + `--ask-for-approval on-failure`）       | 工作区内可读写并运行；沙箱命令失败或需升级时才请求审批。                                                          |
+| YOLO（不推荐）                     | `--dangerously-bypass-approvals-and-sandbox`（别名 `--yolo`）                             | 无沙箱、无提示。                                                                                                  |
 
-> Note: In `workspace-write`, network is disabled by default unless enabled in config (`[sandbox_workspace_write].network_access = true`).
+> 注意：在 `workspace-write` 下默认禁用网络，除非在配置中开启（`[sandbox_workspace_write].network_access = true`）。
 
-#### Fine-tuning in `config.toml`
+#### 在 `config.toml` 微调
 
 ```toml
-# approval mode
+# 审批模式
 approval_policy = "untrusted"
 sandbox_mode    = "read-only"
 
-# full-auto mode
+# 全自动
 approval_policy = "on-request"
 sandbox_mode    = "workspace-write"
 
-# Optional: allow network in workspace-write mode
+# 可选：在 workspace-write 下允许网络
 [sandbox_workspace_write]
 network_access = true
 ```
 
-You can also save presets as **profiles**:
+也可用 **profiles** 保存预设：
 
 ```toml
 [profiles.full_auto]
@@ -63,9 +63,9 @@ approval_policy = "never"
 sandbox_mode    = "read-only"
 ```
 
-### Experimenting with the Code Sandbox
+### 试验 Code 沙箱
 
-To test to see what happens when a command is run under the sandbox provided by Code, we provide the following subcommands in the CLI:
+想测试命令在 Code 沙箱下的行为，可使用 CLI 子命令：
 
 ```
 # macOS
@@ -74,16 +74,16 @@ code sandbox macos [--full-auto] [COMMAND]...
 # Linux
 code sandbox linux [--full-auto] [COMMAND]...
 
-# Legacy aliases
+# 旧别名
 code debug seatbelt [--full-auto] [COMMAND]...
 code debug landlock [--full-auto] [COMMAND]...
 ```
 
-### Platform sandboxing details
+### 平台沙箱细节
 
-The mechanism Code uses to implement the sandbox policy depends on your OS:
+沙箱机制取决于操作系统：
 
-- **macOS 12+** uses **Apple Seatbelt** and runs commands using `sandbox-exec` with a profile (`-p`) that corresponds to the `--sandbox` that was specified.
-- **Linux** uses a combination of Landlock/seccomp APIs to enforce the `sandbox` configuration.
+- **macOS 12+** 使用 **Apple Seatbelt**，通过 `sandbox-exec -p <profile>` 运行，与 `--sandbox` 对应。
+- **Linux** 组合使用 Landlock/seccomp API。
 
-Note that when running Linux in a containerized environment such as Docker, sandboxing may not work if the host/container configuration does not support the necessary Landlock/seccomp APIs. In such cases, we recommend configuring your Docker container so that it provides the sandbox guarantees you are looking for and then running `code` with `--sandbox danger-full-access` (or, more simply, the `--dangerously-bypass-approvals-and-sandbox` flag) within your container.
+在容器环境（如 Docker）中运行 Linux 时，若宿主/容器不支持所需 Landlock/seccomp API，沙箱可能不可用。此时建议为容器配置所需的隔离保障，并在容器内以 `--sandbox danger-full-access`（或 `--dangerously-bypass-approvals-and-sandbox`）运行 `code`。

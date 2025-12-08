@@ -1,8 +1,8 @@
-## Advanced
+## 高级
 
-## Non-interactive / CI mode
+## 非交互 / CI 模式
 
-Run Every Code headless in pipelines. Example GitHub Action step:
+在流水线中以无头方式运行 Every Code。GitHub Action 示例步骤：
 
 ```yaml
 - name: Update changelog via Code
@@ -12,53 +12,51 @@ Run Every Code headless in pipelines. Example GitHub Action step:
     code exec --full-auto "update CHANGELOG for next release"
 ```
 
-### Resuming non-interactive sessions
+### 恢复非交互会话
 
-You can resume a previous headless run to continue the same conversation context and append to the same rollout file.
+可以恢复之前的无头运行，继续同一对话上下文并附加到相同的 rollout 文件。
 
-Interactive TUI equivalent:
+交互式 TUI 等价用法：
 
 ```shell
-code resume             # picker
-code resume --last      # most recent
+code resume             # 选择器
+code resume --last      # 最近一次
 code resume <SESSION_ID>
 ```
 
-Compatibility:
+兼容性：
 
-- Latest source builds include `code exec resume` (examples below).
-- If `code exec --help` shows no `resume`, update to the latest release; the flag ships in v0.5.0 and newer.
+- 最新源码构建包含 `code exec resume`（见下方示例）。
+- 如果 `code exec --help` 没有 `resume`，请升级到最新版本；该参数自 v0.5.0 起提供。
 
 ```shell
-# Resume the most recent recorded session and run with a new prompt
+# 恢复最近会话并用新提示继续
 code exec "ship a release draft changelog" resume --last
 
-# Alternatively, pass the prompt via stdin
-# Note: omit the trailing '-' to avoid it being parsed as a SESSION_ID
+# 或通过 stdin 传递提示
+# 注意：不要加末尾的 '-'，避免被解析为 SESSION_ID
 echo "ship a release draft changelog" | code exec resume --last
 
-# Or resume a specific session by id (UUID)
+# 或按 id（UUID）恢复指定会话
 code exec resume 7f9f9a2e-1b3c-4c7a-9b0e-123456789abc "continue the task"
 ```
 
-Notes:
+说明：
 
-- When using `--last`, Code picks the newest recorded session; if none exist, it behaves like starting fresh.
-- Resuming appends new events to the existing session file and maintains the same conversation id.
+- 使用 `--last` 时，Code 选择最新记录的会话；如不存在则等同新建。
+- 恢复会将新事件附加到现有会话文件，并保持相同的对话 id。
 
-## Tracing / verbose logging
+## 跟踪 / 详细日志
 
-Because Code is written in Rust, it honors the `RUST_LOG` environment variable to configure its logging behavior.
+Code 由 Rust 编写，可通过 `RUST_LOG` 环境变量配置日志行为。
 
-The TUI defaults to `RUST_LOG=code_core=info,code_tui=info,code_browser=info,code_auto_drive_core=info` and log messages are written to `~/.code/log/codex-tui.log` (Code still reads the legacy `~/.codex/log/` path), so you can leave the following running in a separate terminal to monitor log messages as they are written:
+TUI 默认使用 `RUST_LOG=code_core=info,code_tui=info,code_browser=info,code_auto_drive_core=info`，日志写入 `~/.code/log/codex-tui.log`（仍会读取旧路径 `~/.codex/log/`）。可在另一个终端持续查看：
 
 ```
 tail -F ~/.code/log/codex-tui.log
 ```
 
-When you also enable the CLI `--debug` flag, request/response JSON is
-partitioned into helper-specific folders under `~/.code/debug_logs/`. Expect
-subdirectories such as:
+同时启用 CLI 的 `--debug` 参数时，请求/响应 JSON 会按照辅助模块划分到 `~/.code/debug_logs/` 下的子目录，例如：
 
 - `auto/coordinator`
 - `auto/observer/bootstrap`
@@ -71,25 +69,24 @@ subdirectories such as:
 - `ui/theme_builder`
 - `cli/manual_prompt`
 
-Tags become nested path components, so custom helpers appear alongside the
-existing timestamped filenames.
+标签会转化为嵌套路径，因此自定义辅助模块会与时间戳文件并列出现。
 
-By comparison, the non-interactive mode (`code exec`) defaults to `RUST_LOG=error`, but messages are printed inline, so there is no need to monitor a separate file.
+相比之下，非交互模式（`code exec`）默认 `RUST_LOG=error`，日志直接打印，无需监听文件。
 
-See the Rust documentation on [`RUST_LOG`](https://docs.rs/env_logger/latest/env_logger/#enabling-logging) for more information on the configuration options.
+更多配置选项参见 Rust 文档 [`RUST_LOG`](https://docs.rs/env_logger/latest/env_logger/#enabling-logging)。
 
 ## Model Context Protocol (MCP)
 
-The Code CLI can be configured to leverage MCP servers by defining an [`mcp_servers`](./config.md#mcp_servers) section in `~/.code/config.toml` (Code will also read a legacy `~/.codex/config.toml`). It is intended to mirror how tools such as Claude and Cursor define `mcpServers` in their respective JSON config files, though the Code format is slightly different since it uses TOML rather than JSON, e.g.:
+可通过在 `~/.code/config.toml`（也会读取旧版 `~/.codex/config.toml`）中定义 [`mcp_servers`](./config.md#mcp_servers) 配置，让 Code CLI 使用 MCP 服务器。其设计与 Claude、Cursor 等工具的 `mcpServers` 类似，但采用 TOML 而非 JSON，格式略有差异，例如：
 
 ```toml
-# IMPORTANT: the top-level key is `mcp_servers` rather than `mcpServers`.
+# 重要：顶层键为 `mcp_servers` 而不是 `mcpServers`。
 [mcp_servers.server-name]
 command = "npx"
 args = ["-y", "mcp-server"]
 env = { "API_KEY" = "value" }
 ```
 
-## Using Code as an MCP Server
+## 将 Code 作为 MCP 服务器
 > [!TIP]
-> It is somewhat experimental, but the Code CLI can also be run as an MCP _server_ via `code mcp`. If you launch it with an MCP client such as `npx @modelcontextprotocol/inspector code mcp` and send it a `tools/list` request, you will see that there is only one tool, `code`, that accepts a grab-bag of inputs, including a catch-all `config` map for anything you might want to override. Feel free to play around with it and provide feedback via GitHub issues. 
+> 虽仍属实验性质，Code CLI 也可通过 `code mcp` 作为 MCP *服务器* 运行。用 MCP 客户端（如 `npx @modelcontextprotocol/inspector code mcp`）启动并发送 `tools/list` 请求，会看到只有一个工具 `code`，它接受多种输入（包含兜底的 `config` map，可覆盖任意内容）。欢迎体验并通过 GitHub issue 提供反馈。
