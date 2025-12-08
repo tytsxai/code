@@ -79,12 +79,14 @@ code exec "任务描述"          # 非交互模式执行
 | `/push` | 提交、推送并监控工作流 |
 | `/review [focus]` | 代码审查 |
 | `/init` | 创建 AGENTS.md |
+| `/compact` | 压缩对话以节省上下文 |
 
 ### 模型与显示
 
 | 命令 | 说明 |
 |------|------|
-| `/model` | 选择模型 |
+| `/model` | 选择模型与推理力度 |
+| `/approvals` | 配置审批策略 |
 | `/reasoning <level>` | 推理力度（minimal/low/medium/high） |
 | `/verbosity <level>` | 输出详尽度（low/medium/high） |
 | `/theme` | 自定义主题 |
@@ -110,6 +112,7 @@ code exec "任务描述"          # 非交互模式执行
 | `/cloud` | 浏览 Cloud 任务 |
 | `/cmd <name>` | 运行项目命令 |
 | `/perf <on\|off\|show\|reset>` | 性能追踪 |
+| `/feedback` | 发送日志给维护者 |
 
 ---
 
