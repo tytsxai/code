@@ -3,6 +3,7 @@
 使用这些文档来安装、配置并运行 Every Code（Code）。
 
 ## 从这里开始
+- [核心上手指南](core-usage.md)
 - [快速上手](getting-started.md)
 - [安装](install.md) · [Homebrew](HOMEBREW.md)
 - [认证](authentication.md)
