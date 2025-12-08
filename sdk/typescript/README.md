@@ -1,18 +1,16 @@
 # Codex SDK
 
-Embed the Codex agent in your workflows and apps.
+在工作流和应用里嵌入 Codex 智能体。TypeScript SDK 对随包提供的 `codex` 可执行文件做薄封装，通过 stdin/stdout 交换 JSONL 事件。
 
-The TypeScript SDK wraps the bundled `codex` binary. It spawns the CLI and exchanges JSONL events over stdin/stdout.
-
-## Installation
+## 安装
 
 ```bash
 npm install @openai/codex-sdk
 ```
 
-Requires Node.js 18+.
+需要 Node.js 18+。
 
-## Quickstart
+## 快速上手
 
 ```typescript
 import { Codex } from "@openai/codex-sdk";
@@ -25,15 +23,15 @@ console.log(turn.finalResponse);
 console.log(turn.items);
 ```
 
-Call `run()` repeatedly on the same `Thread` instance to continue that conversation.
+在同一 `Thread` 上重复调用 `run()` 可继续对话：
 
 ```typescript
 const nextTurn = await thread.run("Implement the fix");
 ```
 
-### Streaming responses
+### 流式响应
 
-`run()` buffers events until the turn finishes. To react to intermediate progress—tool calls, streaming responses, and file diffs—use `runStreamed()` instead, which returns an async generator of structured events.
+`run()` 会缓冲事件直到轮次完成。若需要实时处理工具调用、流式回答、文件 diff，请使用 `runStreamed()`，它返回一个异步迭代器：
 
 ```typescript
 const { events } = await thread.runStreamed("Diagnose the test failure and propose a fix");
@@ -50,9 +48,9 @@ for await (const event of events) {
 }
 ```
 
-### Resuming an existing thread
+### 恢复已有线程
 
-Threads are persisted in `~/.codex/sessions`. If you lose the in-memory `Thread` object, reconstruct it with `resumeThread()` and keep going.
+线程会持久化在 `~/.codex/sessions`。如果丢失了内存中的 `Thread` 对象，可用 `resumeThread()` 继续：
 
 ```typescript
 const savedThreadId = process.env.CODEX_THREAD_ID!;
@@ -60,9 +58,9 @@ const thread = codex.resumeThread(savedThreadId);
 await thread.run("Implement the fix");
 ```
 
-### Working directory controls
+### 工作目录控制
 
-Codex runs in the current working directory by default. To avoid unrecoverable errors, Codex requires the working directory to be a Git repository. You can skip the Git repository check by passing the `skipGitRepoCheck` option when creating a thread. 
+Codex 默认在当前工作目录运行，并要求该目录是 Git 仓库。若需跳过 Git 检查，在创建线程时传 `skipGitRepoCheck`：
 
 ```typescript
 const thread = codex.startThread({
@@ -70,4 +68,3 @@ const thread = codex.startThread({
   skipGitRepoCheck: true,
 });
 ```
-
