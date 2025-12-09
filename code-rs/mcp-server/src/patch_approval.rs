@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 
 use code_core::CodexConversation;
 use code_core::protocol::FileChange;
@@ -11,13 +12,15 @@ use mcp_types::ElicitRequestParamsRequestedSchema;
 use mcp_types::JSONRPCErrorError;
 use mcp_types::ModelContextProtocolRequest;
 use mcp_types::RequestId;
-use serde::Deserialize;
 use serde::Serialize;
 use serde_json::json;
-use tracing::error;
+use tokio::time::timeout;
+use tracing::{error, warn};
 
 use crate::code_tool_runner::INVALID_PARAMS_ERROR_CODE;
 use crate::outgoing_message::OutgoingMessageSender;
+
+const APPROVAL_TIMEOUT: Duration = Duration::from_secs(300);
 
 #[derive(Debug, Serialize)]
 pub struct PatchApprovalElicitRequestParams {
@@ -33,11 +36,6 @@ pub struct PatchApprovalElicitRequestParams {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub code_grant_root: Option<PathBuf>,
     pub code_changes: HashMap<PathBuf, FileChange>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct PatchApprovalResponse {
-    pub decision: ReviewDecision,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -116,11 +114,10 @@ pub(crate) async fn on_patch_approval_response(
     receiver: tokio::sync::oneshot::Receiver<mcp_types::Result>,
     codex: Arc<CodexConversation>,
 ) {
-    let response = receiver.await;
-    let value = match response {
-        Ok(value) => value,
-        Err(err) => {
-            error!("request failed: {err:?}");
+    let value = match timeout(APPROVAL_TIMEOUT, receiver).await {
+        Ok(Ok(value)) => value,
+        Ok(Err(err)) => {
+            error!("patch approval request failed: {err:?}");
             if let Err(submit_err) = codex
                 .submit(Op::PatchApproval {
                     id: approval_id.clone(),
@@ -132,19 +129,34 @@ pub(crate) async fn on_patch_approval_response(
             }
             return;
         }
+        Err(_) => {
+            warn!(
+                "patch approval request timed out after {:?} (call_id={})",
+                APPROVAL_TIMEOUT, approval_id
+            );
+            if let Err(err) = codex
+                .submit(Op::PatchApproval {
+                    id: approval_id,
+                    decision: ReviewDecision::Denied,
+                })
+                .await
+            {
+                error!("failed to submit denied PatchApproval after timeout: {err}");
+            }
+            return;
+        }
     };
 
-    let response = serde_json::from_value::<PatchApprovalResponse>(value).unwrap_or_else(|err| {
-        error!("failed to deserialize PatchApprovalResponse: {err}");
-        PatchApprovalResponse {
-            decision: ReviewDecision::Denied,
-        }
+    let decision = code_protocol::protocol::ReviewDecision::from_value(&value).unwrap_or_else(|| {
+        error!("failed to deserialize patch approval response (value={value:?}); denying");
+        code_protocol::protocol::ReviewDecision::Denied
     });
+    let decision: ReviewDecision = decision.into();
 
     if let Err(err) = codex
         .submit(Op::PatchApproval {
             id: approval_id,
-            decision: response.decision,
+            decision,
         })
         .await
     {

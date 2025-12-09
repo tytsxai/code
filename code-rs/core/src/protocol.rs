@@ -1304,6 +1304,19 @@ pub enum ReviewDecision {
     Abort,
 }
 
+impl From<code_protocol::protocol::ReviewDecision> for ReviewDecision {
+    fn from(value: code_protocol::protocol::ReviewDecision) -> Self {
+        match value {
+            code_protocol::protocol::ReviewDecision::Approved => ReviewDecision::Approved,
+            code_protocol::protocol::ReviewDecision::ApprovedForSession => {
+                ReviewDecision::ApprovedForSession
+            }
+            code_protocol::protocol::ReviewDecision::Denied => ReviewDecision::Denied,
+            code_protocol::protocol::ReviewDecision::Abort => ReviewDecision::Abort,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum FileChange {

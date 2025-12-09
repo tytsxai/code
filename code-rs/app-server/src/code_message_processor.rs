@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::Duration;
 
 use code_core::AuthManager;
 use code_core::CodexConversation;
@@ -21,7 +22,8 @@ use mcp_types::JSONRPCErrorError;
 use mcp_types::RequestId;
 use tokio::sync::Mutex;
 use tokio::sync::oneshot;
-use tracing::error;
+use tokio::time::timeout;
+use tracing::{error, warn};
 use uuid::Uuid;
 
 use crate::error_code::INTERNAL_ERROR_CODE;
@@ -38,12 +40,10 @@ use code_protocol::mcp_protocol::APPLY_PATCH_APPROVAL_METHOD;
 use code_protocol::mcp_protocol::AddConversationListenerParams;
 use code_protocol::mcp_protocol::AddConversationSubscriptionResponse;
 use code_protocol::mcp_protocol::ApplyPatchApprovalParams;
-use code_protocol::mcp_protocol::ApplyPatchApprovalResponse;
 use code_protocol::mcp_protocol::ClientRequest;
 use code_protocol::mcp_protocol::ConversationId;
 use code_protocol::mcp_protocol::EXEC_COMMAND_APPROVAL_METHOD;
 use code_protocol::mcp_protocol::ExecCommandApprovalParams;
-use code_protocol::mcp_protocol::ExecCommandApprovalResponse;
 use code_protocol::mcp_protocol::InputItem as WireInputItem;
 use code_protocol::mcp_protocol::InterruptConversationParams;
 use code_protocol::mcp_protocol::InterruptConversationResponse;
@@ -57,6 +57,8 @@ use code_protocol::mcp_protocol::SendUserMessageParams;
 use code_protocol::mcp_protocol::SendUserMessageResponse;
 use code_protocol::mcp_protocol::SendUserTurnParams;
 use code_protocol::mcp_protocol::SendUserTurnResponse;
+
+const APPROVAL_TIMEOUT: Duration = Duration::from_secs(300);
 
 // Removed deprecated ChatGPT login support scaffolding
 
@@ -676,11 +678,10 @@ async fn on_patch_approval_response(
     receiver: tokio::sync::oneshot::Receiver<mcp_types::Result>,
     codex: Arc<CodexConversation>,
 ) {
-    let response = receiver.await;
-    let value = match response {
-        Ok(value) => value,
-        Err(err) => {
-            error!("request failed: {err:?}");
+    let value = match timeout(APPROVAL_TIMEOUT, receiver).await {
+        Ok(Ok(value)) => value,
+        Ok(Err(err)) => {
+            error!("patch approval request failed: {err:?}");
             if let Err(submit_err) = codex
                 .submit(Op::PatchApproval {
                     id: approval_id.clone(),
@@ -692,20 +693,33 @@ async fn on_patch_approval_response(
             }
             return;
         }
+        Err(_) => {
+            warn!(
+                "patch approval request timed out after {:?} (call_id={})",
+                APPROVAL_TIMEOUT, approval_id
+            );
+            if let Err(err) = codex
+                .submit(Op::PatchApproval {
+                    id: approval_id,
+                    decision: core_protocol::ReviewDecision::Denied,
+                })
+                .await
+            {
+                error!("failed to submit denied PatchApproval after timeout: {err}");
+            }
+            return;
+        }
     };
 
-    let response =
-        serde_json::from_value::<ApplyPatchApprovalResponse>(value).unwrap_or_else(|err| {
-            error!("failed to deserialize ApplyPatchApprovalResponse: {err}");
-            ApplyPatchApprovalResponse {
-                decision: ReviewDecision::Denied,
-            }
-        });
+    let decision = ReviewDecision::from_value(&value).unwrap_or_else(|| {
+        error!("failed to deserialize approval response (value={value:?}); denying");
+        ReviewDecision::Denied
+    });
 
     if let Err(err) = codex
         .submit(Op::PatchApproval {
             id: approval_id,
-            decision: map_review_decision_from_wire(response.decision),
+            decision: decision.into(),
         })
         .await
     {
@@ -718,43 +732,52 @@ async fn on_exec_approval_response(
     receiver: tokio::sync::oneshot::Receiver<mcp_types::Result>,
     conversation: Arc<CodexConversation>,
 ) {
-    let response = receiver.await;
-    let value = match response {
-        Ok(value) => value,
-        Err(err) => {
-            tracing::error!("request failed: {err:?}");
+    let value = match timeout(APPROVAL_TIMEOUT, receiver).await {
+        Ok(Ok(value)) => value,
+        Ok(Err(err)) => {
+            error!("exec approval request failed: {err:?}");
+            if let Err(submit_err) = conversation
+                .submit(Op::ExecApproval {
+                    id: approval_id.clone(),
+                    decision: core_protocol::ReviewDecision::Denied,
+                })
+                .await
+            {
+                error!("failed to submit denied ExecApproval after request failure: {submit_err}");
+            }
+            return;
+        }
+        Err(_) => {
+            warn!(
+                "exec approval request timed out after {:?} (call_id={})",
+                APPROVAL_TIMEOUT, approval_id
+            );
+            if let Err(err) = conversation
+                .submit(Op::ExecApproval {
+                    id: approval_id,
+                    decision: core_protocol::ReviewDecision::Denied,
+                })
+                .await
+            {
+                error!("failed to submit denied ExecApproval after timeout: {err}");
+            }
             return;
         }
     };
 
-    // Try to deserialize `value` and then make the appropriate call to `codex`.
-    let response =
-        serde_json::from_value::<ExecCommandApprovalResponse>(value).unwrap_or_else(|err| {
-            error!("failed to deserialize ExecCommandApprovalResponse: {err}");
-            // If we cannot deserialize the response, we deny the request to be
-            // conservative.
-            ExecCommandApprovalResponse {
-                decision: ReviewDecision::Denied,
-            }
-        });
+    let decision = ReviewDecision::from_value(&value).unwrap_or_else(|| {
+        error!("failed to deserialize exec approval response (value={value:?}); denying");
+        ReviewDecision::Denied
+    });
 
     if let Err(err) = conversation
         .submit(Op::ExecApproval {
             id: approval_id,
-            decision: map_review_decision_from_wire(response.decision),
+            decision: decision.into(),
         })
         .await
     {
         error!("failed to submit ExecApproval: {err}");
-    }
-}
-
-fn map_review_decision_from_wire(d: code_protocol::protocol::ReviewDecision) -> core_protocol::ReviewDecision {
-    match d {
-        code_protocol::protocol::ReviewDecision::Approved => core_protocol::ReviewDecision::Approved,
-        code_protocol::protocol::ReviewDecision::ApprovedForSession => core_protocol::ReviewDecision::ApprovedForSession,
-        code_protocol::protocol::ReviewDecision::Denied => core_protocol::ReviewDecision::Denied,
-        code_protocol::protocol::ReviewDecision::Abort => core_protocol::ReviewDecision::Abort,
     }
 }
 

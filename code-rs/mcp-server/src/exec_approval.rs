@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 
 use code_core::CodexConversation;
 use code_core::protocol::Op;
@@ -12,9 +13,13 @@ use mcp_types::RequestId;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::json;
-use tracing::error;
+use tokio::time::timeout;
+use tracing::{error, warn};
 
 use crate::code_tool_runner::INVALID_PARAMS_ERROR_CODE;
+use crate::outgoing_message::OutgoingMessageSender;
+
+const APPROVAL_TIMEOUT: Duration = Duration::from_secs(300);
 
 /// Conforms to [`mcp_types::ElicitRequestParams`] so that it can be used as the
 /// `params` field of an [`ElicitRequest`].
@@ -37,20 +42,11 @@ pub struct ExecApprovalElicitRequestParams {
     pub code_cwd: PathBuf,
 }
 
-// TODO(mbolin): ExecApprovalResponse does not conform to ElicitResult. See:
-// - https://github.com/modelcontextprotocol/modelcontextprotocol/blob/f962dc1780fa5eed7fb7c8a0232f1fc83ef220cd/schema/2025-06-18/schema.json#L617-L636
-// - https://modelcontextprotocol.io/specification/draft/client/elicitation#protocol-messages
-// It should have "action" and "content" fields.
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ExecApprovalResponse {
-    pub decision: ReviewDecision,
-}
-
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn handle_exec_approval_request(
     command: Vec<String>,
     cwd: PathBuf,
-    outgoing: Arc<crate::outgoing_message::OutgoingMessageSender>,
+    outgoing: Arc<OutgoingMessageSender>,
     codex: Arc<CodexConversation>,
     request_id: RequestId,
     tool_call_id: String,
@@ -119,29 +115,49 @@ async fn on_exec_approval_response(
     receiver: tokio::sync::oneshot::Receiver<mcp_types::Result>,
     codex: Arc<CodexConversation>,
 ) {
-    let response = receiver.await;
-    let value = match response {
-        Ok(value) => value,
-        Err(err) => {
-            error!("request failed: {err:?}");
+    let value = match timeout(APPROVAL_TIMEOUT, receiver).await {
+        Ok(Ok(value)) => value,
+        Ok(Err(err)) => {
+            error!("exec approval request failed: {err:?}");
+            if let Err(submit_err) = codex
+                .submit(Op::ExecApproval {
+                    id: approval_id.clone(),
+                    decision: ReviewDecision::Denied,
+                })
+                .await
+            {
+                error!("failed to submit denied ExecApproval after request failure: {submit_err}");
+            }
+            return;
+        }
+        Err(_) => {
+            warn!(
+                "exec approval request timed out after {:?} (call_id={})",
+                APPROVAL_TIMEOUT, approval_id
+            );
+            if let Err(err) = codex
+                .submit(Op::ExecApproval {
+                    id: approval_id,
+                    decision: ReviewDecision::Denied,
+                })
+                .await
+            {
+                error!("failed to submit denied ExecApproval after timeout: {err}");
+            }
             return;
         }
     };
 
-    // Try to deserialize `value` and then make the appropriate call to `codex`.
-    let response = serde_json::from_value::<ExecApprovalResponse>(value).unwrap_or_else(|err| {
-        error!("failed to deserialize ExecApprovalResponse: {err}");
-        // If we cannot deserialize the response, we deny the request to be
-        // conservative.
-        ExecApprovalResponse {
-            decision: ReviewDecision::Denied,
-        }
+    let decision = code_protocol::protocol::ReviewDecision::from_value(&value).unwrap_or_else(|| {
+        error!("failed to deserialize exec approval response (value={value:?}); denying");
+        code_protocol::protocol::ReviewDecision::Denied
     });
+    let decision: ReviewDecision = decision.into();
 
     if let Err(err) = codex
         .submit(Op::ExecApproval {
             id: approval_id,
-            decision: response.decision,
+            decision,
         })
         .await
     {

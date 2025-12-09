@@ -1382,6 +1382,73 @@ pub enum ReviewDecision {
     Abort,
 }
 
+impl ReviewDecision {
+    /// Parses a ReviewDecision from a generic JSON Value (typically from an MCP response).
+    /// This handles:
+    /// 1. Direct `{"decision": "..."}` object
+    /// 2. `ElicitResult` structure with `content` containing "decision"
+    /// 3. `ElicitResult` structure where `action` maps to a decision
+    pub fn from_value(value: &serde_json::Value) -> Option<Self> {
+        #[derive(Deserialize)]
+        struct DecisionOnly {
+            decision: ReviewDecision,
+        }
+
+        // 1. Try direct deserialization
+        if let Ok(response) = serde_json::from_value::<DecisionOnly>(value.clone()) {
+            return Some(response.decision);
+        }
+
+        // 2. Try ElicitResult
+        if let Ok(elicit) = serde_json::from_value::<mcp_types::ElicitResult>(value.clone()) {
+            if let Some(decision) = Self::from_elicit(&elicit) {
+                return Some(decision);
+            }
+            tracing::warn!(
+                "approval response had elicit format but no usable decision (action={})",
+                elicit.action
+            );
+            return None;
+        }
+
+        None
+    }
+
+    fn from_elicit(elicit: &mcp_types::ElicitResult) -> Option<Self> {
+        if let Some(content) = &elicit.content {
+            if let Some(decision_value) = content.get("decision") {
+                if let Some(decision_str) = decision_value.as_str() {
+                    if let Some(mapped) = Self::from_str_loose(decision_str) {
+                        return Some(mapped);
+                    }
+                }
+            }
+        }
+
+        Self::from_action_loose(&elicit.action)
+    }
+
+    fn from_action_loose(action: &str) -> Option<Self> {
+        match action.to_ascii_lowercase().as_str() {
+            "accept" => Some(ReviewDecision::Approved),
+            "decline" | "cancel" => Some(ReviewDecision::Denied),
+            _ => None,
+        }
+    }
+
+    fn from_str_loose(decision: &str) -> Option<Self> {
+        match decision.to_ascii_lowercase().as_str() {
+            "approved" | "approve" | "accept" => Some(ReviewDecision::Approved),
+            "approved_for_session" | "approve_for_session" | "session" => {
+                Some(ReviewDecision::ApprovedForSession)
+            }
+            "abort" => Some(ReviewDecision::Abort),
+            "decline" | "deny" | "denied" | "cancel" => Some(ReviewDecision::Denied),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, TS)]
 #[serde(rename_all = "snake_case")]
 pub enum FileChange {
