@@ -168,6 +168,11 @@ max-bytes = 10485760  # 10MB
 hide_gpt5_1_migration_prompt = false
 hide_gpt-5.1-codex-max_migration_prompt = false
 
+# TUI Theme Configuration
+# Available themes: dark-photon, light-photon, dark-mono, light-mono
+[tui.theme]
+name = "dark-photon"  # 深色主题
+
 # MCP Server Configuration
 # Example MCP server configurations
 [mcp-servers.example-server]
