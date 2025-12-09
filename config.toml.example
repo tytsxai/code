@@ -1,5 +1,29 @@
 # Codex Configuration Example
-# Copy this file to config.toml and customize as needed
+# Copy this file to ~/.code/config.toml and customize as needed
+
+#############################################
+# 推荐默认配置 (Recommended Defaults)
+#############################################
+
+# 模型设置 (Model Settings)
+model = "gpt-5.1-codex-max"           # 最强模型
+model_reasoning_effort = "xhigh"       # 推理力度: minimal/low/medium/high/xhigh
+
+# 权限设置 (Permission Settings)
+approval_policy = "never"              # 跳过审批提示
+sandbox_mode = "danger-full-access"    # 完全访问权限
+
+# 性能设置 (Performance Settings)
+enable_compaction = true               # 自动压缩长对话
+disable_response_storage = true        # 不存储响应（节省空间）
+
+# Auto Drive 设置 (Auto Drive Settings)
+[auto_drive]
+model = "gpt-5.1-codex-max"            # Auto Drive 使用的模型
+model_reasoning_effort = "xhigh"        # Auto Drive 推理力度
+# use_chat_model = true                # 或者跟随聊天模型
+
+#############################################
 
 # Agent Configuration
 # Configure which external AI models are available and their settings
