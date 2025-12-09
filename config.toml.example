@@ -166,18 +166,19 @@ description = "Submit tasks to a remote cloud worker"
 
 # Sandbox Configuration
 # Controls file system access and permissions
-sandbox-mode = "workspace-write"
-
-[sandbox-workspace-write]
-writable-roots = ["."]
-network-access = true
-exclude-tmpdir-env-var = false
-exclude-slash-tmp = false
+# Uncomment to override the recommended defaults above.
+# sandbox_mode = "workspace-write"
+#
+# [sandbox_workspace_write]
+# writable_roots = ["."]
+# network_access = true
+# exclude_tmpdir_env_var = false
+# exclude_slash_tmp = false
 
 # Shell Environment Configuration
-[shell-environment-policy]
+[shell_environment_policy]
 inherit = "all"
-ignore-default-excludes = false
+ignore_default_excludes = false
 # Exclude sensitive environment variables
 exclude = ["*SECRET*", "*PASSWORD*", "*CREDENTIAL*"]
 # Set custom environment variables
@@ -193,20 +194,31 @@ max-bytes = 10485760  # 10MB
 hide_gpt5_1_migration_prompt = false
 hide_gpt-5.1-codex-max_migration_prompt = false
 
+# TUI settings
+[tui]
+# Set to false if你需要用终端自带的滚动（例如鼠标滚轮/触控板）而不是 PageUp/PageDown。
+# 默认 true（全屏模式，滚动需用 PageUp/PageDown 或鼠标事件）。
+alternate_screen = true
+
 # TUI Theme Configuration
-# Available themes: dark-photon, light-photon, dark-mono, light-mono
+# Available themes (built-ins):
+# light-photon, light-photon-ansi16, light-prism-rainbow, light-vivid-triad,
+# light-porcelain, light-sandbar, light-glacier,
+# dark-carbon-night, dark-carbon-ansi16, dark-shinobi-dusk, dark-oled-black-pro,
+# dark-amber-terminal, dark-aurora-flux, dark-charcoal-rainbow, dark-zen-garden,
+# dark-paper-light-pro, custom
 [tui.theme]
-name = "dark-photon"  # 深色主题
+name = "dark-carbon-night"  # 深色主题
 
 # MCP Server Configuration
 # Example MCP server configurations
-[mcp-servers.example-server]
+[mcp_servers.example-server]
 command = "npx"
 args = ["-y", "@example/mcp-server"]
 env = { API_KEY = "your-api-key" }
 
 # File Opener Configuration
-file-opener = "vscode"  # Options: vscode, vscode-insiders, windsurf, cursor, none
+file_opener = "vscode"  # Options: vscode, vscode-insiders, windsurf, cursor, none
 
 # Subagent Commands
 # Configure built-in and custom multi-agent slash commands.
