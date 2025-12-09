@@ -369,11 +369,7 @@ impl OtelEventManager {
             })
             .collect::<String>();
 
-        let prompt_to_log = if self.metadata.log_user_prompts {
-            prompt.as_str()
-        } else {
-            "[REDACTED]"
-        };
+        let prompt_to_log = self.sanitize_log_field(&prompt);
 
         tracing::event!(
             tracing::Level::INFO,
