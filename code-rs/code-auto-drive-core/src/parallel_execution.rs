@@ -15,46 +15,67 @@ use futures::future::join_all;
 pub enum ParallelRole {
     /// Primary coordinator role - orchestrates the overall task
     Coordinator,
-    /// Executor role - implements code changes
-    Executor,
+    /// Executor role - implements code changes (can have multiple)
+    Executor(u8),  // Executor ID (1, 2, 3...)
     /// Reviewer role - reviews and validates changes
     Reviewer,
-    /// QA role - tests and validates functionality
-    QaAutomation,
-    /// Cross-check role - provides second opinion
-    CrossCheck,
 }
 
 impl ParallelRole {
     /// Returns the role-specific prompt prefix
     pub fn prompt_prefix(&self) -> &'static str {
         match self {
-            Self::Coordinator => "As the COORDINATOR, orchestrate the task:",
-            Self::Executor => "As the EXECUTOR, implement the following:",
-            Self::Reviewer => "As the REVIEWER, check for issues in:",
-            Self::QaAutomation => "As QA, verify and test:",
-            Self::CrossCheck => "As CROSS-CHECKER, validate the approach:",
+            Self::Coordinator => 
+                "As the COORDINATOR, you MUST distribute work to keep ALL executors busy. \
+                 Break down the task into parallel sub-tasks, each assigned to a different executor. \
+                 If the task can be done faster by multiple executors working on different parts, split it. \
+                 If the same task benefits from parallel attempts, have all executors work on it simultaneously:",
+            Self::Executor(id) => match id {
+                1 => "As EXECUTOR-1, focus on the primary implementation. Work efficiently:",
+                2 => "As EXECUTOR-2, handle secondary components or provide an alternative solution:",
+                3 => "As EXECUTOR-3, work on supporting code, tests, or a third approach:",
+                _ => "As an EXECUTOR, implement the assigned code changes:",
+            },
+            Self::Reviewer => 
+                "As the REVIEWER, carefully check ALL executor outputs for bugs, edge cases, \
+                 inconsistencies, and potential issues. Merge the best parts if multiple approaches exist:",
+        }
+    }
+    
+    /// Returns role name for display
+    pub fn name(&self) -> String {
+        match self {
+            Self::Coordinator => "Coordinator".to_string(),
+            Self::Executor(id) => format!("Executor-{}", id),
+            Self::Reviewer => "Reviewer".to_string(),
         }
     }
 
     /// Returns roles for a given parallel instance count
+    /// 
+    /// Distribution strategy:
+    /// - 1: Coordinator only (serial mode)
+    /// - 2: Coordinator + Executor
+    /// - 3: Coordinator + Executor + Reviewer
+    /// - 4: Coordinator + 2 Executors + Reviewer  
+    /// - 5: Coordinator + 3 Executors + Reviewer (recommended for speed)
     pub fn roles_for_count(count: u8) -> Vec<Self> {
         match count.min(5) {
             1 => vec![Self::Coordinator],
-            2 => vec![Self::Coordinator, Self::Executor],
-            3 => vec![Self::Coordinator, Self::Executor, Self::Reviewer],
+            2 => vec![Self::Coordinator, Self::Executor(1)],
+            3 => vec![Self::Coordinator, Self::Executor(1), Self::Reviewer],
             4 => vec![
                 Self::Coordinator,
-                Self::Executor,
+                Self::Executor(1),
+                Self::Executor(2),
                 Self::Reviewer,
-                Self::QaAutomation,
             ],
             5 | _ => vec![
                 Self::Coordinator,
-                Self::Executor,
+                Self::Executor(1),
+                Self::Executor(2),
+                Self::Executor(3),
                 Self::Reviewer,
-                Self::QaAutomation,
-                Self::CrossCheck,
             ],
         }
     }
@@ -140,38 +161,45 @@ pub async fn execute_parallel(
 
 /// Merge results from parallel execution into a unified response.
 /// 
-/// Uses the coordinator's output as the primary response, with insights
-/// from other roles incorporated as additional context.
+/// Strategy: Coordinator provides the plan, Executors provide implementations,
+/// Reviewer validates and merges the best parts.
 pub fn merge_parallel_results(results: Vec<ParallelResult>) -> String {
     let coordinator_result = results
         .iter()
         .find(|r| matches!(r.role, ParallelRole::Coordinator));
+    let reviewer_result = results
+        .iter()
+        .find(|r| matches!(r.role, ParallelRole::Reviewer));
 
+    let mut merged = String::new();
+
+    // 1. Start with coordinator's plan
     if let Some(coord) = coordinator_result {
-        // Primary response is from coordinator
-        let mut merged = coord.response.clone();
+        if !coord.response.is_empty() {
+            merged.push_str(&format!("[Coordinator Plan]\n{}\n", coord.response));
+        }
+    }
 
-        // Append insights from other roles
-        for result in results.iter() {
-            if !matches!(result.role, ParallelRole::Coordinator) && result.success {
-                if !result.response.is_empty() {
-                    merged.push_str(&format!(
-                        "\n\n[{:?} Insight]: {}",
-                        result.role, result.response
-                    ));
-                }
+    // 2. Add all executor outputs
+    for result in results.iter() {
+        if matches!(result.role, ParallelRole::Executor(_)) && result.success {
+            if !result.response.is_empty() {
+                merged.push_str(&format!(
+                    "\n[{}]\n{}\n",
+                    result.role.name(), result.response
+                ));
             }
         }
-
-        merged
-    } else {
-        // Fallback: concatenate all results
-        results
-            .iter()
-            .map(|r| r.response.as_str())
-            .collect::<Vec<_>>()
-            .join("\n\n")
     }
+
+    // 3. End with reviewer's analysis
+    if let Some(review) = reviewer_result {
+        if !review.response.is_empty() {
+            merged.push_str(&format!("\n[Reviewer Analysis]\n{}\n", review.response));
+        }
+    }
+
+    merged.trim().to_string()
 }
 
 #[cfg(test)]
