@@ -19,6 +19,13 @@ Rust 版是当前维护的主 CLI，功能覆盖并超越早期的 TypeScript �
 
 Rust CLI 使用 `config.toml` 而非 `config.json`。详细选项见 [`docs/config.md`](../docs/config.md)。
 
+## 汉化维护原则
+
+- 汉化改动仅落在 `code-rs/`，不改镜像的 `codex-rs/`，方便跟上游同步。
+- 默认界面仍为英文；开启 `ui_locale = "zh-CN"` 后显示中文，缺失条目回退英文，避免功能回归。
+- 字符串集中管理（单一表/模块），上游增量改文案时只需补键，降低合并冲突。
+- 所有汉化变更需继续通过 `./build-fast.sh`，遇到 warning 视为失败。
+
 ### Model Context Protocol 支持
 
 Rust CLI 默认作为 MCP 客户端启动，按 `config.toml` 中的 [`mcp_servers`](../docs/config.md#mcp_servers) 配置连接服务器。也可用 `code mcp-server` 让 CLI 作为 MCP **服务器** 运行，并通过 [`@modelcontextprotocol/inspector`](https://github.com/modelcontextprotocol/inspector) 体验：
