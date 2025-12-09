@@ -26,19 +26,28 @@ impl ParallelRole {
     pub fn prompt_prefix(&self) -> &'static str {
         match self {
             Self::Coordinator => 
-                "As the COORDINATOR, you MUST distribute work to keep ALL executors busy. \
-                 Break down the task into parallel sub-tasks, each assigned to a different executor. \
-                 If the task can be done faster by multiple executors working on different parts, split it. \
-                 If the same task benefits from parallel attempts, have all executors work on it simultaneously:",
+                "You are the COORDINATOR. Your job is to:\n\
+                 1. Analyze the task and break it into parallel sub-tasks\n\
+                 2. Assign work to ALL 3 executors - never leave any idle\n\
+                 3. If the task is small, have executors work on it from different angles\n\
+                 4. If the task is large, split it into independent parts\n\
+                 Now coordinate:",
             Self::Executor(id) => match id {
-                1 => "As EXECUTOR-1, focus on the primary implementation. Work efficiently:",
-                2 => "As EXECUTOR-2, handle secondary components or provide an alternative solution:",
-                3 => "As EXECUTOR-3, work on supporting code, tests, or a third approach:",
-                _ => "As an EXECUTOR, implement the assigned code changes:",
+                1 => "You are EXECUTOR-1 (Primary). Deliver production-quality work on your assigned task. \
+                      Focus on correctness and completeness first:",
+                2 => "You are EXECUTOR-2 (Parallel). Work on your assigned part independently. \
+                      If given the same task as others, try a different approach:",
+                3 => "You are EXECUTOR-3 (Support). Handle edge cases, tests, or gaps. \
+                      If the main task is done, optimize or add documentation:",
+                _ => "You are an EXECUTOR. Complete your assigned work efficiently:",
             },
             Self::Reviewer => 
-                "As the REVIEWER, carefully check ALL executor outputs for bugs, edge cases, \
-                 inconsistencies, and potential issues. Merge the best parts if multiple approaches exist:",
+                "You are the REVIEWER. Your job is to:\n\
+                 1. Check ALL executor outputs for correctness and completeness\n\
+                 2. Identify any bugs, edge cases, or inconsistencies\n\
+                 3. If multiple solutions exist, select or merge the best parts\n\
+                 4. Provide a final, unified result\n\
+                 Now review:",
         }
     }
     
