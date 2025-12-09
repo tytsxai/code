@@ -5,6 +5,7 @@ use code_core::ConversationManager;
 use code_core::NewConversation;
 use code_core::config::Config;
 use code_core::protocol::Op;
+use ratatui::text::Line;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::mpsc::unbounded_channel;
 
@@ -29,8 +30,18 @@ pub(crate) fn spawn_agent(
         } = match server.new_conversation(config).await {
             Ok(v) => v,
             Err(e) => {
-                // TODO: surface this error to the user.
                 tracing::error!("failed to initialize codex: {e}");
+                let message = format!("Failed to start Codex session: {e}");
+                app_event_tx_clone.send(AppEvent::InsertHistoryWithKind {
+                    id: None,
+                    kind: crate::streaming::StreamKind::Answer,
+                    lines: vec![Line::from(message.clone())],
+                });
+                app_event_tx_clone.send(AppEvent::EmitTuiNotification {
+                    title: "Codex session failed".to_string(),
+                    body: Some(message),
+                });
+                app_event_tx_clone.send(AppEvent::RequestRedraw);
                 return;
             }
         };

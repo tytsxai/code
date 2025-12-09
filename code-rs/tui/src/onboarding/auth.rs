@@ -19,6 +19,7 @@ use ratatui::widgets::Wrap;
 use code_login::AuthMode;
 
 use code_core::config::GPT_5_CODEX_MEDIUM_MODEL;
+use code_core::CodexAuth;
 use code_core::model_family::{derive_default_model_family, find_family_for_model};
 
 use crate::LoginStatus;
@@ -368,14 +369,29 @@ impl AuthModeWidget {
         }
     }
 
-    /// TODO: Read/write from the correct hierarchy config overrides + auth json + OPENAI_API_KEY.
     fn verify_api_key(&mut self) {
-        if matches!(self.login_status, LoginStatus::AuthMode(AuthMode::ApiKey)) {
-            // We already have an API key configured (e.g., from auth.json or env),
-            // so mark this step complete immediately.
-            self.sign_in_state = SignInState::EnvVarFound;
-        } else {
-            self.sign_in_state = SignInState::EnvVarMissing;
+        let originator = self
+            .chat_widget_args
+            .lock()
+            .ok()
+            .map(|args| args.config.responses_originator_header.clone())
+            .unwrap_or_else(|| code_core::default_client::DEFAULT_ORIGINATOR.to_string());
+
+        match CodexAuth::from_code_home(&self.code_home, AuthMode::ApiKey, &originator) {
+            Ok(Some(auth)) if auth.mode == AuthMode::ApiKey => {
+                self.login_status = LoginStatus::AuthMode(AuthMode::ApiKey);
+                self.sign_in_state = SignInState::EnvVarFound;
+                if let Ok(mut args) = self.chat_widget_args.lock() {
+                    args.config.using_chatgpt_auth = false;
+                }
+            }
+            Ok(_) => {
+                self.sign_in_state = SignInState::EnvVarMissing;
+            }
+            Err(e) => {
+                self.error = Some(e.to_string());
+                self.sign_in_state = SignInState::EnvVarMissing;
+            }
         }
 
         self.event_tx.send(AppEvent::RequestRedraw);
