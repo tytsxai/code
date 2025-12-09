@@ -27,3 +27,7 @@
 - [沙箱概览](sandbox.md)
 - [平台沙箱](platform-sandboxing.md)
 - [Windows 沙箱安全](platform-sandboxing.md#windows)
+
+## 项目维护
+- [上游同步指南](upstream-sync.md) ⭐
+
