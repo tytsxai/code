@@ -15,15 +15,12 @@ use std::time::Duration;
 
 use anyhow::Context;
 use anyhow::Result;
-use code_core::config::Config;
-use code_core::config::ConfigOverrides;
 use code_mcp_client::McpClient;
 use mcp_types::ClientCapabilities;
 use mcp_types::Implementation;
 use mcp_types::InitializeRequestParams;
 use mcp_types::ListToolsRequestParams;
 use mcp_types::MCP_SCHEMA_VERSION;
-use tracing_subscriber::filter::filter_fn;
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::prelude::*;
 
@@ -38,24 +35,7 @@ async fn main() -> Result<()> {
         .with_writer(std::io::stderr)
         .with_filter(env_filter);
 
-    let config = Config::load_with_cli_overrides(Vec::new(), ConfigOverrides::default())
-        .context("failed to load config for OTEL setup")?;
-
-    let _otel = code_core::otel_init::build_provider(&config, env!("CARGO_PKG_VERSION"))?;
-
-    let _ = match _otel
-        .as_ref()
-        .map(|provider| {
-            provider
-                .layer()
-                .with_filter(filter_fn(code_core::otel_init::code_export_filter))
-        }) {
-        Some(otel_layer) => tracing_subscriber::registry()
-            .with(fmt_layer)
-            .with(otel_layer)
-            .try_init(),
-        None => tracing_subscriber::registry().with(fmt_layer).try_init(),
-    };
+    let _ = tracing_subscriber::registry().with(fmt_layer).try_init();
 
     // Collect command-line arguments excluding the program name itself.
     let mut args: Vec<OsString> = std::env::args_os().skip(1).collect();
