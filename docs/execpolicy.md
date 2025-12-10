@@ -1,38 +1,74 @@
-# Execpolicy 快速上手
+# Execpolicy quickstart
 
-Every Code 可以在运行 shell 命令前套用你自定义的规则执行策略。策略保存在 `~/.code/policy` 下的 Starlark `.codexpolicy` 文件里（兼容读取 `~/.codex/policy`）。
+Codex can enforce your own rules-based execution policy before it runs shell commands. Policies live in `.execpolicy` files under `~/.codex/policy`.
 
-## 创建策略
+## How to create and edit rules
 
-1. 创建策略目录：`mkdir -p ~/.code/policy`。
-2. 在该目录添加一个或多个 `.codexpolicy` 文件。Code 启动时会自动加载其中的所有 `.codexpolicy`。
-3. 通过 `prefix_rule` 声明需要允许、提示或禁止的命令：
+### TUI interactions
+
+Codex CLI will present the option to whitelist commands when a command causes a prompt.
+
+<img width="513" height="168" alt="Screenshot 2025-12-04 at 9 23 54 AM" src="https://github.com/user-attachments/assets/4c8ee8ea-3101-4a81-bb13-3f4a9aa02502" />
+
+Whitelisted commands will no longer require your permission to run in current and subsequent sessions.
+
+Under the hood, when you approve and whitelist a command, codex will edit `~/.codex/policy/default.execpolicy`.
+
+### Editing `.execpolicy` files
+
+1. Create a policy directory: `mkdir -p ~/.codex/policy`.
+2. Add one or more `.execpolicy` files in that folder. Codex automatically loads every `.execpolicy` file in there on startup.
+3. Write `prefix_rule` entries to describe the commands you want to allow, prompt, or block:
 
 ```starlark
 prefix_rule(
     pattern = ["git", ["push", "fetch"]],
     decision = "prompt",  # allow | prompt | forbidden
-    match = [["git", "push", "origin", "main"]],  # 必须匹配的示例
-    not_match = [["git", "status"]],              # 不应匹配的示例
+    match = [["git", "push", "origin", "main"]],  # examples that must match
+    not_match = [["git", "status"]],              # examples that must not match
 )
 ```
 
-- `pattern` 是按顺序匹配的命令 token；用嵌套列表表示可选项（如同时匹配 `push` 与 `fetch`）。
-- `decision` 设定严重程度；多条规则命中时取最严格的结果（forbidden > prompt > allow）。
-- `match` 与 `not_match` 相当于可选单元测试。Code 加载策略时会校验，示例行为异常会及时反馈。
+- `pattern` is a list of shell tokens, evaluated from left to right; wrap tokens in a nested list to express alternatives (for example, match both `push` and `fetch`).
+- `decision` sets the severity; Codex picks the strictest decision when multiple rules match (forbidden > prompt > allow).
+- `match` and `not_match` act as optional unit tests. Codex validates them when it loads your policy, so you get feedback if an example has unexpected behavior.
 
-上述规则表示：当 Code 想运行以 `git push` 或 `git fetch` 开头的命令时，会先询问用户确认。
+In this example rule, if Codex wants to run commands with the prefix `git push` or `git fetch`, it will first ask for user approval.
 
-## 预览决策
+## Preview decisions
 
-使用 `code execpolicy check` 子命令可在保存前预览决策（语法详见 [`codex-execpolicy` README](../code-rs/execpolicy/README.md)）：
+Use the `codex execpolicy check` subcommand to preview decisions before you save a rule (see the [`codex-execpolicy` README](../codex-rs/execpolicy/README.md) for syntax details):
 
 ```shell
-code execpolicy check --policy ~/.code/policy/default.codexpolicy git push origin main
+codex execpolicy check --policy ~/.codex/policy/default.codexpolicy git push origin main
 ```
 
-通过多个 `--policy` 参数可测试多文件组合效果，`--pretty` 输出格式化 JSON。更完整的语法说明见 [`code-rs/execpolicy` README](../code-rs/execpolicy/README.md)。
+Pass multiple `--policy` flags to test how several files combine, and use `--pretty` for formatted JSON output. See the [`codex-rs/execpolicy` README](../codex-rs/execpolicy/README.md) for a more detailed walkthrough of the available syntax.
 
-## 状态
+Example output when a rule matches:
 
-`execpolicy` 命令仍处于预览阶段，未来 API 可能有破坏性变更。
+```json
+{
+  "matchedRules": [
+    {
+      "prefixRuleMatch": {
+        "matchedPrefix": ["git", "push"],
+        "decision": "prompt"
+      }
+    }
+  ],
+  "decision": "prompt"
+}
+```
+
+When no rules match, `matchedRules` is an empty array and `decision` is omitted.
+
+```json
+{
+  "matchedRules": []
+}
+```
+
+## Status
+
+`execpolicy` commands are still in preview. The API may have breaking changes in the future.

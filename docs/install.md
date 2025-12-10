@@ -1,54 +1,48 @@
-## 安装与构建
+## Install & build
 
-### 系统要求
+### System requirements
 
-| 要求                      | 详情                                                              |
-| ------------------------- | ----------------------------------------------------------------- |
-| 操作系统                  | macOS 12+、Ubuntu 20.04+/Debian 10+，或通过 WSL2 的 Windows 11     |
-| Git（可选，推荐）         | 2.23+，方便使用内置 PR 工具                                       |
-| 内存                      | 至少 4 GB（推荐 8 GB）                                            |
+| Requirement                 | Details                                                         |
+| --------------------------- | --------------------------------------------------------------- |
+| Operating systems           | macOS 12+, Ubuntu 20.04+/Debian 10+, or Windows 11 **via WSL2** |
+| Git (optional, recommended) | 2.23+ for built-in PR helpers                                   |
+| RAM                         | 4-GB minimum (8-GB recommended)                                 |
 
 ### DotSlash
 
-GitHub Release 包含名为 `code` 的 [DotSlash](https://dotslash-cli.com/) shim。把 DotSlash 文件检入仓库即可在跨平台固定同一二进制。
+The GitHub Release also contains a [DotSlash](https://dotslash-cli.com/) file for the Codex CLI named `codex`. Using a DotSlash file makes it possible to make a lightweight commit to source control to ensure all contributors use the same version of an executable, regardless of what platform they use for development.
 
-### 从源码构建
-
-```bash
-# 克隆仓库并进入工作区
- git clone https://github.com/just-every/code.git
- cd code
-
-# 如有需要，安装 Rust 工具链
- curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
- source "$HOME/.cargo/env"
-
-# 构建全部组件（CLI、TUI、MCP 服务器），与 CI 检查一致
- ./build-fast.sh
-
-# 用示例提示启动 TUI
- ./target/debug/code -- "explain this codebase to me"
-```
-
-### 安装到本地（可选）
-
-构建成功后，可将二进制安装到 `~/.local/bin` 以便全局使用：
+### Build from source
 
 ```bash
-# 创建目录并复制二进制
-mkdir -p ~/.local/bin
-cp ./.code/working/_target-cache/code/*/code-rs/dev-fast/code ~/.local/bin/code
-chmod +x ~/.local/bin/code
+# Clone the repository and navigate to the root of the Cargo workspace.
+git clone https://github.com/openai/codex.git
+cd codex/codex-rs
 
-# 确保 PATH 包含 ~/.local/bin（添加到 ~/.zshrc 或 ~/.bashrc）
-export PATH="$HOME/.local/bin:$PATH"
+# Install the Rust toolchain, if necessary.
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+source "$HOME/.cargo/env"
+rustup component add rustfmt
+rustup component add clippy
+# Install helper tools used by the workspace justfile:
+cargo install just
+# Optional: install nextest for the `just test` helper (or use `cargo test --all-features` as a fallback)
+cargo install cargo-nextest
 
-# 验证安装
-code --version
+# Build Codex.
+cargo build
+
+# Launch the TUI with a sample prompt.
+cargo run --bin codex -- "explain this codebase to me"
+
+# After making changes, use the root justfile helpers (they default to codex-rs):
+just fmt
+just fix -p <crate-you-touched>
+
+# Run the relevant tests (project-specific is fastest), for example:
+cargo test -p codex-tui
+# If you have cargo-nextest installed, `just test` runs the full suite:
+just test
+# Otherwise, fall back to:
+cargo test --all-features
 ```
-
-> [!TIP]
-> 如果使用激活器（如 codex-activator），需确保配置同步。详见 [激活器集成](activator-integration.md)。
-
-> [!NOTE]
-> 项目将编译警告视为错误。唯一必需的本地检查是 `./build-fast.sh`；除非特别要求，否则不要运行 `rustfmt`/`clippy`。

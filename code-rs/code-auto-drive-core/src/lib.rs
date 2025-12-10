@@ -8,7 +8,7 @@ mod controller;
 mod retry;
 pub mod parallel_execution;
 
-// Enhanced Auto Drive modules
+// Enhanced Auto Drive feature modules
 pub mod audit;
 pub mod budget;
 pub mod checkpoint;
@@ -21,12 +21,11 @@ pub mod retry_enhanced;
 pub mod scheduler;
 pub mod telemetry;
 
-#[cfg(test)]
-mod property_tests;
-
-
 #[cfg(feature = "dev-faults")]
 mod faults;
+
+#[cfg(test)]
+mod property_tests;
 
 pub use auto_coordinator::{
     start_auto_coordinator,

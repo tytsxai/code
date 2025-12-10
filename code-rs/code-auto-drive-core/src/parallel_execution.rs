@@ -15,10 +15,14 @@ use futures::future::join_all;
 pub enum ParallelRole {
     /// Primary coordinator role - orchestrates the overall task
     Coordinator,
+    /// Architect role - designs system structure (for complex tasks)
+    Architect,
     /// Executor role - implements code changes (can have multiple)
-    Executor(u8),  // Executor ID (1, 2)
+    Executor(u8),  // Executor ID (1, 2, 3)
     /// Tester role - writes and runs tests
     Tester,
+    /// Debugger role - fixes bugs and issues
+    Debugger,
     /// Reviewer role - reviews, merges, and cleans up
     Reviewer,
 }
@@ -28,73 +32,74 @@ impl ParallelRole {
     pub fn prompt_prefix(&self) -> &'static str {
         match self {
             Self::Coordinator => 
-                "You are the COORDINATOR (战略规划者). Your job is to:\n\
-                 1. Analyze the task complexity and dependencies\n\
+                "You are the COORDINATOR (战略规划). Your job is to:\n\
+                 1. Analyze task complexity and dependencies\n\
                  2. Define clear acceptance criteria (Definition of Done)\n\
-                 3. Assign core implementation to EXECUTOR-1, alternative approach to EXECUTOR-2\n\
-                 4. Direct TESTER to prepare test cases based on acceptance criteria\n\
-                 5. Monitor progress and adjust strategy if needed\n\
-                 Be specific about what SUCCESS looks like for this task.\n\
+                 3. If complex, ask ARCHITECT to design first\n\
+                 4. Assign implementation to EXECUTORs by specialty\n\
+                 5. Direct TESTER to prepare test cases\n\
+                 6. Monitor progress and adjust strategy\n\
+                 Be specific about what SUCCESS looks like.\n\
                  Now coordinate:",
+            Self::Architect =>
+                "You are the ARCHITECT (架构设计). Your job is to:\n\
+                 1. Design overall structure and component layout\n\
+                 2. Define interfaces, data flow, module boundaries\n\
+                 3. Identify technical risks and mitigations\n\
+                 4. Create a blueprint for EXECUTORs to follow\n\
+                 5. Ensure design is scalable and maintainable\n\
+                 Think before building. Design shapes the solution.\n\
+                 Now design:",
             Self::Executor(id) => match id {
                 1 => "You are EXECUTOR-1 (核心实现). Your job is to:\n\
-                      1. Deliver production-quality implementation following project conventions\n\
-                      2. Prioritize correctness, maintainability, and best practices\n\
-                      3. Notify TESTER when core functionality is ready\n\
-                      4. Document any assumptions or trade-offs made\n\
+                      1. Deliver production-quality core implementation\n\
+                      2. Follow ARCHITECT's design if provided\n\
+                      3. Prioritize correctness and maintainability\n\
+                      4. Document assumptions and trade-offs\n\
                       Focus on THE RIGHT solution, not just A solution.\n\
                       Now implement:",
                 2 => "You are EXECUTOR-2 (创新方案). Your job is to:\n\
-                      1. Explore alternative implementation approaches\n\
-                      2. Focus on performance optimization or architectural improvements\n\
-                      3. Even if EXECUTOR-1 finishes first, provide your perspective\n\
-                      4. Challenge assumptions and propose creative solutions\n\
-                      Your diversity of thought improves the final result.\n\
+                      1. Explore alternative approaches\n\
+                      2. Focus on performance or architecture improvements\n\
+                      3. Challenge assumptions and innovate\n\
+                      4. Provide diversity of thought\n\
+                      Your different perspective improves the result.\n\
                       Now implement:",
-                3 => "You are EXECUTOR-3 (重构优化). Your job is to:\n\
-                      1. Refactor and improve code structure\n\
-                      2. Reduce duplication and improve maintainability\n\
-                      3. Apply design patterns where appropriate\n\
-                      4. Ensure code is clean and well-organized\n\
-                      Now implement:",
-                4 => "You are EXECUTOR-4 (文档完善). Your job is to:\n\
-                      1. Add comprehensive documentation and comments\n\
-                      2. Update README and API docs as needed\n\
-                      3. Create examples and usage guides\n\
-                      4. Ensure code is self-documenting\n\
-                      Now implement:",
-                5 => "You are EXECUTOR-5 (边缘处理). Your job is to:\n\
+                3 => "You are EXECUTOR-3 (边缘处理). Your job is to:\n\
                       1. Handle edge cases and error conditions\n\
                       2. Add input validation and safety checks\n\
                       3. Improve error messages and diagnostics\n\
                       4. Make the solution robust and resilient\n\
                       Now implement:",
-                6 => "You are EXECUTOR-6 (性能调优). Your job is to:\n\
-                      1. Profile and optimize performance bottlenecks\n\
-                      2. Reduce memory usage and improve efficiency\n\
-                      3. Add caching or lazy evaluation where helpful\n\
-                      4. Ensure the solution scales well\n\
-                      Now implement:",
                 _ => "You are an EXECUTOR. Complete your assigned work efficiently:",
             },
             Self::Tester => 
                 "You are the TESTER (测试验证). Your job is to:\n\
-                 1. Write test cases based on COORDINATOR's acceptance criteria\n\
-                 2. Cover edge cases, error handling, and boundary conditions\n\
+                 1. Write test cases based on acceptance criteria\n\
+                 2. Cover edge cases, error handling, boundaries\n\
                  3. Verify EXECUTOR implementations meet requirements\n\
-                 4. Report test coverage and any failing scenarios\n\
-                 5. Ensure the solution works in realistic conditions\n\
+                 4. Report test coverage and any failures\n\
+                 5. Work with DEBUGGER to resolve issues\n\
                  Quality assurance is your responsibility.\n\
                  Now test:",
+            Self::Debugger =>
+                "You are the DEBUGGER (问题修复). Your job is to:\n\
+                 1. Investigate failures reported by TESTER\n\
+                 2. Identify root causes of bugs\n\
+                 3. Implement minimal, targeted fixes\n\
+                 4. Verify fixes don't introduce regressions\n\
+                 5. Document the issue and resolution\n\
+                 Fix fast, fix right.\n\
+                 Now debug:",
             Self::Reviewer => 
                 "You are the REVIEWER (合并管理). Your job is to:\n\
-                 1. Evaluate ALL solutions from EXECUTORs objectively\n\
-                 2. Check TESTER's results - all tests must pass\n\
-                 3. Merge the best parts into a unified, optimal solution\n\
-                 4. Ensure code quality, consistency, and documentation\n\
-                 5. CLEANUP: Delete obsolete code-* branches after merging\n\
-                    Run: git branch | grep 'code-' to list branches\n\
-                    Keep only the branch with the accepted solution\n\
+                 1. Evaluate ALL solutions objectively\n\
+                 2. Confirm TESTER's tests pass\n\
+                 3. Merge the best parts into optimal solution\n\
+                 4. Ensure quality, consistency, documentation\n\
+                 5. CLEANUP: Delete obsolete code-* branches\n\
+                    Run: git branch | grep 'code-' to list\n\
+                    Keep only the accepted solution branch\n\
                  Your decision is final. Deliver excellence.\n\
                  Now review:",
         }
@@ -104,25 +109,27 @@ impl ParallelRole {
     pub fn name(&self) -> String {
         match self {
             Self::Coordinator => "Coordinator".to_string(),
+            Self::Architect => "Architect".to_string(),
             Self::Executor(id) => format!("Executor-{}", id),
             Self::Tester => "Tester".to_string(),
+            Self::Debugger => "Debugger".to_string(),
             Self::Reviewer => "Reviewer".to_string(),
         }
     }
 
     /// Returns roles for a given parallel instance count
     /// 
-    /// Distribution strategy:
+    /// Optimized distribution strategy:
     /// - 1: Coordinator only (serial mode)
     /// - 2: Coordinator + Executor
     /// - 3: Coordinator + Executor + Reviewer
     /// - 4: Coordinator + 2 Executors + Reviewer  
     /// - 5: Coordinator + 2 Executors + Tester + Reviewer
-    /// - 6: Coordinator + 3 Executors + Tester + Reviewer
-    /// - 7: Coordinator + 4 Executors + Tester + Reviewer
-    /// - 8: Coordinator + 5 Executors + Tester + Reviewer
-    /// - 9: Coordinator + 5 Executors + 2 Testers + Reviewer
-    /// - 10: Coordinator + 6 Executors + 2 Testers + Reviewer (max throughput)
+    /// - 6: Coordinator + Architect + 2 Executors + Tester + Reviewer
+    /// - 7: Coordinator + Architect + 2 Executors + Tester + Debugger + Reviewer
+    /// - 8: Coordinator + Architect + 3 Executors + Tester + Debugger + Reviewer (optimal)
+    /// - 9: Coordinator + Architect + 3 Executors + 2 Testers + Debugger + Reviewer
+    /// - 10: Coordinator + Architect + 3 Executors + 2 Testers + 2 Debuggers + Reviewer
     pub fn roles_for_count(count: u8) -> Vec<Self> {
         match count.min(10) {
             1 => vec![Self::Coordinator],
@@ -143,52 +150,52 @@ impl ParallelRole {
             ],
             6 => vec![
                 Self::Coordinator,
+                Self::Architect,
                 Self::Executor(1),
                 Self::Executor(2),
-                Self::Executor(3),
                 Self::Tester,
                 Self::Reviewer,
             ],
             7 => vec![
                 Self::Coordinator,
+                Self::Architect,
                 Self::Executor(1),
                 Self::Executor(2),
-                Self::Executor(3),
-                Self::Executor(4),
                 Self::Tester,
+                Self::Debugger,
                 Self::Reviewer,
             ],
             8 => vec![
                 Self::Coordinator,
+                Self::Architect,
                 Self::Executor(1),
                 Self::Executor(2),
                 Self::Executor(3),
-                Self::Executor(4),
-                Self::Executor(5),
                 Self::Tester,
+                Self::Debugger,
                 Self::Reviewer,
             ],
             9 => vec![
                 Self::Coordinator,
+                Self::Architect,
                 Self::Executor(1),
                 Self::Executor(2),
                 Self::Executor(3),
-                Self::Executor(4),
-                Self::Executor(5),
                 Self::Tester,
-                Self::Tester, // Second tester for parallel test coverage
+                Self::Tester,
+                Self::Debugger,
                 Self::Reviewer,
             ],
             10 | _ => vec![
                 Self::Coordinator,
+                Self::Architect,
                 Self::Executor(1),
                 Self::Executor(2),
                 Self::Executor(3),
-                Self::Executor(4),
-                Self::Executor(5),
-                Self::Executor(6),
                 Self::Tester,
-                Self::Tester, // Second tester
+                Self::Tester,
+                Self::Debugger,
+                Self::Debugger,
                 Self::Reviewer,
             ],
         }
