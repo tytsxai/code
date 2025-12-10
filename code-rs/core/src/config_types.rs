@@ -831,6 +831,58 @@ pub struct AutoDriveSettings {
     /// When > 1, multiple API calls are made in parallel with different role prompts.
     #[serde(default = "default_parallel_instances")]
     pub parallel_instances: u8,
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Enhanced Features (Experimental)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Enable checkpoint persistence for session recovery.
+    #[serde(default)]
+    pub checkpoint_enabled: bool,
+
+    /// Directory for checkpoint files. Defaults to `~/.code/checkpoints`.
+    #[serde(default)]
+    pub checkpoint_dir: Option<PathBuf>,
+
+    /// Checkpoint save interval in turns.
+    #[serde(default = "default_checkpoint_interval")]
+    pub checkpoint_interval: u32,
+
+    /// Enable diagnostics engine for loop and drift detection.
+    #[serde(default = "default_true")]
+    pub diagnostics_enabled: bool,
+
+    /// Loop detection threshold (consecutive identical tool calls).
+    #[serde(default = "default_loop_threshold")]
+    pub loop_threshold: u32,
+
+    /// Token budget limit. None means unlimited.
+    #[serde(default)]
+    pub token_budget: Option<u64>,
+
+    /// Maximum turn count limit. None means unlimited.
+    #[serde(default)]
+    pub turn_limit: Option<u32>,
+
+    /// Maximum duration in seconds. None means unlimited.
+    #[serde(default)]
+    pub duration_limit_seconds: Option<u64>,
+
+    /// Maximum concurrent agents for parallel execution.
+    #[serde(default = "default_max_concurrent_agents")]
+    pub max_concurrent_agents: usize,
+
+    /// Enable audit logging.
+    #[serde(default)]
+    pub audit_enabled: bool,
+
+    /// Path for audit log file.
+    #[serde(default)]
+    pub audit_path: Option<PathBuf>,
+
+    /// Enable telemetry collection.
+    #[serde(default)]
+    pub telemetry_enabled: bool,
 }
 
 impl Default for AutoDriveSettings {
@@ -847,6 +899,19 @@ impl Default for AutoDriveSettings {
             model_reasoning_effort: default_auto_drive_reasoning_effort(),
             auto_resolve_review_attempts: AutoResolveAttemptLimit::default(),
             parallel_instances: default_parallel_instances(),
+            // Enhanced features defaults
+            checkpoint_enabled: false,
+            checkpoint_dir: None,
+            checkpoint_interval: default_checkpoint_interval(),
+            diagnostics_enabled: true,
+            loop_threshold: default_loop_threshold(),
+            token_budget: None,
+            turn_limit: None,
+            duration_limit_seconds: None,
+            max_concurrent_agents: default_max_concurrent_agents(),
+            audit_enabled: false,
+            audit_path: None,
+            telemetry_enabled: false,
         }
     }
 }
@@ -864,6 +929,21 @@ const fn default_auto_drive_reasoning_effort() -> ReasoningEffort {
 /// Valid range: 1-5.
 const fn default_parallel_instances() -> u8 {
     1
+}
+
+/// Default checkpoint save interval in turns.
+const fn default_checkpoint_interval() -> u32 {
+    5
+}
+
+/// Default loop detection threshold.
+const fn default_loop_threshold() -> u32 {
+    3
+}
+
+/// Default maximum concurrent agents.
+const fn default_max_concurrent_agents() -> usize {
+    4
 }
 
 

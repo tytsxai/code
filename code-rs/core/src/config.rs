@@ -1173,6 +1173,30 @@ pub fn set_auto_drive_settings(
     };
     doc["auto_drive"]["continue_mode"] = toml_edit::value(mode_str);
 
+    // Enhanced features
+    doc["auto_drive"]["checkpoint_enabled"] = toml_edit::value(settings.checkpoint_enabled);
+    if let Some(ref dir) = settings.checkpoint_dir {
+        doc["auto_drive"]["checkpoint_dir"] = toml_edit::value(dir.display().to_string());
+    }
+    doc["auto_drive"]["checkpoint_interval"] = toml_edit::value(settings.checkpoint_interval as i64);
+    doc["auto_drive"]["diagnostics_enabled"] = toml_edit::value(settings.diagnostics_enabled);
+    doc["auto_drive"]["loop_threshold"] = toml_edit::value(settings.loop_threshold as i64);
+    if let Some(budget) = settings.token_budget {
+        doc["auto_drive"]["token_budget"] = toml_edit::value(budget as i64);
+    }
+    if let Some(limit) = settings.turn_limit {
+        doc["auto_drive"]["turn_limit"] = toml_edit::value(limit as i64);
+    }
+    if let Some(duration) = settings.duration_limit_seconds {
+        doc["auto_drive"]["duration_limit_seconds"] = toml_edit::value(duration as i64);
+    }
+    doc["auto_drive"]["max_concurrent_agents"] = toml_edit::value(settings.max_concurrent_agents as i64);
+    doc["auto_drive"]["audit_enabled"] = toml_edit::value(settings.audit_enabled);
+    if let Some(ref path) = settings.audit_path {
+        doc["auto_drive"]["audit_path"] = toml_edit::value(path.display().to_string());
+    }
+    doc["auto_drive"]["telemetry_enabled"] = toml_edit::value(settings.telemetry_enabled);
+
     std::fs::create_dir_all(code_home)?;
     let tmp_file = NamedTempFile::new_in(code_home)?;
     std::fs::write(tmp_file.path(), doc.to_string())?;
