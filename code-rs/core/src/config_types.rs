@@ -827,7 +827,7 @@ pub struct AutoDriveSettings {
     pub auto_resolve_review_attempts: AutoResolveAttemptLimit,
 
     /// Number of parallel instances of the same model to use for concurrent
-    /// role execution (coordinator, executor, reviewer). Range: 1-5.
+    /// role execution (coordinator, executor, tester, reviewer). Range: 1-10.
     /// When > 1, multiple API calls are made in parallel with different role prompts.
     #[serde(default = "default_parallel_instances")]
     pub parallel_instances: u8,

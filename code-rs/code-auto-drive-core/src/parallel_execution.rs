@@ -51,6 +51,30 @@ impl ParallelRole {
                       4. Challenge assumptions and propose creative solutions\n\
                       Your diversity of thought improves the final result.\n\
                       Now implement:",
+                3 => "You are EXECUTOR-3 (重构优化). Your job is to:\n\
+                      1. Refactor and improve code structure\n\
+                      2. Reduce duplication and improve maintainability\n\
+                      3. Apply design patterns where appropriate\n\
+                      4. Ensure code is clean and well-organized\n\
+                      Now implement:",
+                4 => "You are EXECUTOR-4 (文档完善). Your job is to:\n\
+                      1. Add comprehensive documentation and comments\n\
+                      2. Update README and API docs as needed\n\
+                      3. Create examples and usage guides\n\
+                      4. Ensure code is self-documenting\n\
+                      Now implement:",
+                5 => "You are EXECUTOR-5 (边缘处理). Your job is to:\n\
+                      1. Handle edge cases and error conditions\n\
+                      2. Add input validation and safety checks\n\
+                      3. Improve error messages and diagnostics\n\
+                      4. Make the solution robust and resilient\n\
+                      Now implement:",
+                6 => "You are EXECUTOR-6 (性能调优). Your job is to:\n\
+                      1. Profile and optimize performance bottlenecks\n\
+                      2. Reduce memory usage and improve efficiency\n\
+                      3. Add caching or lazy evaluation where helpful\n\
+                      4. Ensure the solution scales well\n\
+                      Now implement:",
                 _ => "You are an EXECUTOR. Complete your assigned work efficiently:",
             },
             Self::Tester => 
@@ -93,9 +117,14 @@ impl ParallelRole {
     /// - 2: Coordinator + Executor
     /// - 3: Coordinator + Executor + Reviewer
     /// - 4: Coordinator + 2 Executors + Reviewer  
-    /// - 5: Coordinator + 2 Executors + Tester + Reviewer (optimal)
+    /// - 5: Coordinator + 2 Executors + Tester + Reviewer
+    /// - 6: Coordinator + 3 Executors + Tester + Reviewer
+    /// - 7: Coordinator + 4 Executors + Tester + Reviewer
+    /// - 8: Coordinator + 5 Executors + Tester + Reviewer
+    /// - 9: Coordinator + 5 Executors + 2 Testers + Reviewer
+    /// - 10: Coordinator + 6 Executors + 2 Testers + Reviewer (max throughput)
     pub fn roles_for_count(count: u8) -> Vec<Self> {
-        match count.min(5) {
+        match count.min(10) {
             1 => vec![Self::Coordinator],
             2 => vec![Self::Coordinator, Self::Executor(1)],
             3 => vec![Self::Coordinator, Self::Executor(1), Self::Reviewer],
@@ -105,11 +134,61 @@ impl ParallelRole {
                 Self::Executor(2),
                 Self::Reviewer,
             ],
-            5 | _ => vec![
+            5 => vec![
                 Self::Coordinator,
                 Self::Executor(1),
                 Self::Executor(2),
                 Self::Tester,
+                Self::Reviewer,
+            ],
+            6 => vec![
+                Self::Coordinator,
+                Self::Executor(1),
+                Self::Executor(2),
+                Self::Executor(3),
+                Self::Tester,
+                Self::Reviewer,
+            ],
+            7 => vec![
+                Self::Coordinator,
+                Self::Executor(1),
+                Self::Executor(2),
+                Self::Executor(3),
+                Self::Executor(4),
+                Self::Tester,
+                Self::Reviewer,
+            ],
+            8 => vec![
+                Self::Coordinator,
+                Self::Executor(1),
+                Self::Executor(2),
+                Self::Executor(3),
+                Self::Executor(4),
+                Self::Executor(5),
+                Self::Tester,
+                Self::Reviewer,
+            ],
+            9 => vec![
+                Self::Coordinator,
+                Self::Executor(1),
+                Self::Executor(2),
+                Self::Executor(3),
+                Self::Executor(4),
+                Self::Executor(5),
+                Self::Tester,
+                Self::Tester, // Second tester for parallel test coverage
+                Self::Reviewer,
+            ],
+            10 | _ => vec![
+                Self::Coordinator,
+                Self::Executor(1),
+                Self::Executor(2),
+                Self::Executor(3),
+                Self::Executor(4),
+                Self::Executor(5),
+                Self::Executor(6),
+                Self::Tester,
+                Self::Tester, // Second tester
                 Self::Reviewer,
             ],
         }
