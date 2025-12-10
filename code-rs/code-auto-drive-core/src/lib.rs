@@ -8,6 +8,22 @@ mod controller;
 mod retry;
 pub mod parallel_execution;
 
+// Enhanced Auto Drive modules
+pub mod audit;
+pub mod budget;
+pub mod checkpoint;
+pub mod compaction;
+pub mod diagnostics;
+pub mod enhanced;
+pub mod intervention;
+pub mod progress;
+pub mod retry_enhanced;
+pub mod scheduler;
+pub mod telemetry;
+
+#[cfg(test)]
+mod property_tests;
+
 
 #[cfg(feature = "dev-faults")]
 mod faults;

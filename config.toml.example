@@ -27,6 +27,25 @@ model_reasoning_effort = "xhigh"        # Auto Drive 推理力度
 # use_chat_model = true                # 或者跟随聊天模型
 parallel_instances = 1                  # 并行实例数（1-5）：>1 时同模型多实例并发执行
 
+# 增强功能设置 (Enhanced Features - Experimental)
+# checkpoint_enabled = false           # 启用检查点持久化
+# checkpoint_dir = "~/.code/checkpoints"  # 检查点存储目录
+# checkpoint_interval = 5              # 每 N 轮保存一次检查点
+
+# diagnostics_enabled = true           # 启用诊断引擎
+# loop_threshold = 3                   # 循环检测阈值（连续相同调用次数）
+
+# token_budget = 100000                # Token 预算限制
+# turn_limit = 50                      # 最大轮次限制
+# duration_limit_seconds = 3600        # 最大执行时长（秒）
+
+# max_concurrent_agents = 4            # 最大并发智能体数
+
+# audit_enabled = false                # 启用审计日志
+# audit_path = "~/.code/audit.json"    # 审计日志路径
+
+# telemetry_enabled = false            # 启用遥测收集
+
 #############################################
 
 # Agent Configuration

@@ -16,8 +16,10 @@ pub enum ParallelRole {
     /// Primary coordinator role - orchestrates the overall task
     Coordinator,
     /// Executor role - implements code changes (can have multiple)
-    Executor(u8),  // Executor ID (1, 2, 3...)
-    /// Reviewer role - reviews and validates changes
+    Executor(u8),  // Executor ID (1, 2)
+    /// Tester role - writes and runs tests
+    Tester,
+    /// Reviewer role - reviews, merges, and cleans up
     Reviewer,
 }
 
@@ -26,30 +28,50 @@ impl ParallelRole {
     pub fn prompt_prefix(&self) -> &'static str {
         match self {
             Self::Coordinator => 
-                "You are the COORDINATOR. Your job is to:\n\
-                 1. Analyze the task and break it into parallel sub-tasks\n\
-                 2. Assign work to ALL 3 executors - never leave any idle\n\
-                 3. If the task is small, have executors work on it from different angles\n\
-                 4. If the task is large, split it into independent parts\n\
+                "You are the COORDINATOR (战略规划者). Your job is to:\n\
+                 1. Analyze the task complexity and dependencies\n\
+                 2. Define clear acceptance criteria (Definition of Done)\n\
+                 3. Assign core implementation to EXECUTOR-1, alternative approach to EXECUTOR-2\n\
+                 4. Direct TESTER to prepare test cases based on acceptance criteria\n\
+                 5. Monitor progress and adjust strategy if needed\n\
+                 Be specific about what SUCCESS looks like for this task.\n\
                  Now coordinate:",
             Self::Executor(id) => match id {
-                1 => "You are EXECUTOR-1 (Primary). Deliver production-quality work on your assigned task. \
-                      Focus on correctness and completeness first:",
-                2 => "You are EXECUTOR-2 (Parallel). Work on your assigned part independently. \
-                      If given the same task as others, try a different approach:",
-                3 => "You are EXECUTOR-3 (Support). Handle edge cases, tests, or gaps. \
-                      If the main task is done, optimize or add documentation:",
+                1 => "You are EXECUTOR-1 (核心实现). Your job is to:\n\
+                      1. Deliver production-quality implementation following project conventions\n\
+                      2. Prioritize correctness, maintainability, and best practices\n\
+                      3. Notify TESTER when core functionality is ready\n\
+                      4. Document any assumptions or trade-offs made\n\
+                      Focus on THE RIGHT solution, not just A solution.\n\
+                      Now implement:",
+                2 => "You are EXECUTOR-2 (创新方案). Your job is to:\n\
+                      1. Explore alternative implementation approaches\n\
+                      2. Focus on performance optimization or architectural improvements\n\
+                      3. Even if EXECUTOR-1 finishes first, provide your perspective\n\
+                      4. Challenge assumptions and propose creative solutions\n\
+                      Your diversity of thought improves the final result.\n\
+                      Now implement:",
                 _ => "You are an EXECUTOR. Complete your assigned work efficiently:",
             },
+            Self::Tester => 
+                "You are the TESTER (测试验证). Your job is to:\n\
+                 1. Write test cases based on COORDINATOR's acceptance criteria\n\
+                 2. Cover edge cases, error handling, and boundary conditions\n\
+                 3. Verify EXECUTOR implementations meet requirements\n\
+                 4. Report test coverage and any failing scenarios\n\
+                 5. Ensure the solution works in realistic conditions\n\
+                 Quality assurance is your responsibility.\n\
+                 Now test:",
             Self::Reviewer => 
-                "You are the REVIEWER. Your job is to:\n\
-                 1. Check ALL executor outputs for correctness and completeness\n\
-                 2. Identify any bugs, edge cases, or inconsistencies\n\
-                 3. If multiple solutions exist, select or merge the best parts\n\
-                 4. Provide a final, unified result\n\
-                 5. CLEANUP: After merging, delete obsolete code-* branches created by executors.\n\
-                    Run: git branch | grep 'code-' to list, then git branch -D <branch> for obsolete ones.\n\
-                    Keep only the branch with the accepted solution.\n\
+                "You are the REVIEWER (合并管理). Your job is to:\n\
+                 1. Evaluate ALL solutions from EXECUTORs objectively\n\
+                 2. Check TESTER's results - all tests must pass\n\
+                 3. Merge the best parts into a unified, optimal solution\n\
+                 4. Ensure code quality, consistency, and documentation\n\
+                 5. CLEANUP: Delete obsolete code-* branches after merging\n\
+                    Run: git branch | grep 'code-' to list branches\n\
+                    Keep only the branch with the accepted solution\n\
+                 Your decision is final. Deliver excellence.\n\
                  Now review:",
         }
     }
@@ -59,6 +81,7 @@ impl ParallelRole {
         match self {
             Self::Coordinator => "Coordinator".to_string(),
             Self::Executor(id) => format!("Executor-{}", id),
+            Self::Tester => "Tester".to_string(),
             Self::Reviewer => "Reviewer".to_string(),
         }
     }
@@ -70,7 +93,7 @@ impl ParallelRole {
     /// - 2: Coordinator + Executor
     /// - 3: Coordinator + Executor + Reviewer
     /// - 4: Coordinator + 2 Executors + Reviewer  
-    /// - 5: Coordinator + 3 Executors + Reviewer (recommended for speed)
+    /// - 5: Coordinator + 2 Executors + Tester + Reviewer (optimal)
     pub fn roles_for_count(count: u8) -> Vec<Self> {
         match count.min(5) {
             1 => vec![Self::Coordinator],
@@ -86,7 +109,7 @@ impl ParallelRole {
                 Self::Coordinator,
                 Self::Executor(1),
                 Self::Executor(2),
-                Self::Executor(3),
+                Self::Tester,
                 Self::Reviewer,
             ],
         }

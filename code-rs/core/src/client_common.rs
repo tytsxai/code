@@ -166,6 +166,9 @@ impl Prompt {
     fn is_chinese_locale(locale: &str) -> bool {
         let normalized = locale
             .trim()
+            .split('.')
+            .next()
+            .unwrap_or(locale)
             .replace('_', "-")
             .to_ascii_lowercase();
         normalized == "zh-cn" || normalized == "zh" || normalized.starts_with("zh-")
@@ -588,6 +591,12 @@ mod tests {
             full.contains("基础系统提示"),
             "expected Chinese base instructions when locale is zh: got {full}"
         );
+    }
+
+    #[test]
+    fn chinese_locale_detection_handles_encoding_suffix() {
+        assert!(Prompt::is_chinese_locale("zh_CN.UTF-8"));
+        assert!(!Prompt::is_chinese_locale("en_US.UTF-8"));
     }
 
     #[test]

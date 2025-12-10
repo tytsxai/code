@@ -93,6 +93,7 @@ fn cleanup_branches_sync(workdir: &Path) -> Result<(), String> {
 
         // Check branch age via last commit time
         let age_check = Command::new("git")
+            .current_dir(workdir)
             .args(["log", "-1", "--format=%ct", &branch])
             .output();
 

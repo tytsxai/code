@@ -54,6 +54,46 @@
 - 你可以像平常一样恢复会话；Auto Drive 可从恢复的历史中推导目标。
 - CLI 的 `--output-last-message` 依然可用，仅需要最终回复时可使用。
 
+## 增强功能（实验性）
+
+以下功能通过 `code-auto-drive-core` 模块提供，目前处于实验阶段：
+
+### 检查点系统
+- 自动保存会话状态，支持崩溃恢复
+- 使用 SHA-256 校验和验证数据完整性
+- 可配置保存间隔（默认每 5 轮）
+
+### 诊断引擎
+- 循环检测：识别重复的工具调用模式
+- 目标偏离检测：监控上下文与原始目标的相关性
+- Token 异常检测：当实际使用超过预估 50% 时告警
+
+### 预算控制
+- Token 预算：设置最大 token 使用量
+- 轮次限制：限制最大执行轮数
+- 时间限制：设置最大执行时长
+- 80% 警告阈值，100% 自动暂停
+
+### 智能体调度
+- 并行执行：多智能体同时运行
+- 阻塞执行：按顺序依次运行
+- 可配置并发限制（默认 4）
+
+### 审计日志
+- 记录所有工具执行、文件修改、网络访问
+- 支持 JSON 导出
+- 工作区路径验证
+
+### 遥测收集
+- OpenTelemetry 兼容的 span 跟踪
+- 会话和轮次级别的指标
+- 错误记录和调试日志
+
+### 智能历史压缩
+- 语义感知：保留关键决策和错误
+- 目标保护：始终保留原始目标
+- 可配置保留策略
+
 ## 设置（config.toml）
 - 顶层键：`auto_drive_use_chat_model`（默认 false）、`auto_drive_observer_cadence`（默认 5）。
 - `[auto_drive]` 默认：`review_enabled=true`、`agents_enabled=true`、`qa_automation_enabled=true`、`cross_check_enabled=true`、`observer_enabled=true`、`coordinator_routing=true`、`continue_mode="ten-seconds"`、`model="gpt-5.1"`、`model_reasoning_effort="high"`、`auto_resolve_review_attempts=5`。
