@@ -1,0 +1,9 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 5083cc29b3f93d00a4e47469ec71bdd08ae7994bb837eeec535ef9c3f4610381 # shrinks to task_count = 2
+cc 2e91a7f23cc3232e3a6b8b1918b4e8b622bfc86bc02befe403deed1094f52454 # shrinks to goal = "A", turns = 0, tokens = 1
+cc 028ef70e94e8d49304221a88a4cb4e94bd2eb6949eb9644ece28652d1cbfca02 # shrinks to budget = 112021, usage_percent = 80

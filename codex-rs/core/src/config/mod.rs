@@ -59,7 +59,6 @@ pub mod edit;
 pub mod profile;
 pub mod types;
 
-pub const OPENAI_DEFAULT_MODEL: &str = "gpt-5.1-codex-max";
 const OPENAI_DEFAULT_REVIEW_MODEL: &str = "gpt-5.1-codex-max";
 
 /// Maximum number of bytes of the documentation that will be embedded. Larger
@@ -73,7 +72,7 @@ pub const CONFIG_TOML_FILE: &str = "config.toml";
 #[derive(Debug, Clone, PartialEq)]
 pub struct Config {
     /// Optional override of model selection.
-    pub model: String,
+    pub model: Option<String>,
 
     /// Model used specifically for review sessions. Defaults to "gpt-5.1-codex-max".
     pub review_model: String,
@@ -245,9 +244,6 @@ pub struct Config {
     pub include_apply_patch_tool: bool,
 
     pub tools_web_search_request: bool,
-
-    /// When `true`, run a model-based assessment for commands denied by the sandbox.
-    pub experimental_sandbox_command_assessment: bool,
 
     /// If set to `true`, used only the experimental unified exec tool.
     pub use_experimental_unified_exec_tool: bool,
@@ -733,7 +729,6 @@ pub struct ConfigToml {
     pub experimental_use_unified_exec_tool: Option<bool>,
     pub experimental_use_rmcp_client: Option<bool>,
     pub experimental_use_freeform_apply_patch: Option<bool>,
-    pub experimental_sandbox_command_assessment: Option<bool>,
     /// Preferred OSS provider for local models, e.g. "lmstudio" or "ollama".
     pub oss_provider: Option<String>,
 }
@@ -919,7 +914,6 @@ pub struct ConfigOverrides {
     pub include_apply_patch_tool: Option<bool>,
     pub show_raw_agent_reasoning: Option<bool>,
     pub tools_web_search_request: Option<bool>,
-    pub experimental_sandbox_command_assessment: Option<bool>,
     /// Additional directories that should be treated as writable roots for this session.
     pub additional_writable_roots: Vec<PathBuf>,
 }
@@ -978,7 +972,6 @@ impl Config {
             include_apply_patch_tool: include_apply_patch_tool_override,
             show_raw_agent_reasoning,
             tools_web_search_request: override_tools_web_search_request,
-            experimental_sandbox_command_assessment: sandbox_command_assessment_override,
             additional_writable_roots,
         } = overrides;
 
@@ -1003,7 +996,6 @@ impl Config {
         let feature_overrides = FeatureOverrides {
             include_apply_patch_tool: include_apply_patch_tool_override,
             web_search_request: override_tools_web_search_request,
-            experimental_sandbox_command_assessment: sandbox_command_assessment_override,
         };
 
         let features = Features::from_config(&cfg, &config_profile, feature_overrides);
@@ -1102,8 +1094,6 @@ impl Config {
         let tools_web_search_request = features.enabled(Feature::WebSearchRequest);
         let use_experimental_unified_exec_tool = features.enabled(Feature::UnifiedExec);
         let use_experimental_use_rmcp_client = features.enabled(Feature::RmcpClient);
-        let experimental_sandbox_command_assessment =
-            features.enabled(Feature::SandboxCommandAssessment);
 
         let forced_chatgpt_workspace_id =
             cfg.forced_chatgpt_workspace_id.as_ref().and_then(|value| {
@@ -1117,11 +1107,7 @@ impl Config {
 
         let forced_login_method = cfg.forced_login_method;
 
-        // todo(aibrahim): make model optional
-        let model = model
-            .or(config_profile.model)
-            .or(cfg.model)
-            .unwrap_or_else(default_model);
+        let model = model.or(config_profile.model).or(cfg.model);
 
         let compact_prompt = compact_prompt.or(cfg.compact_prompt).and_then(|value| {
             let trimmed = value.trim();
@@ -1234,7 +1220,6 @@ impl Config {
             forced_login_method,
             include_apply_patch_tool: include_apply_patch_tool_flag,
             tools_web_search_request,
-            experimental_sandbox_command_assessment,
             use_experimental_unified_exec_tool,
             use_experimental_use_rmcp_client,
             features,
@@ -1321,10 +1306,6 @@ impl Config {
         }
         self.forced_auto_mode_downgraded_on_windows = !value;
     }
-}
-
-fn default_model() -> String {
-    OPENAI_DEFAULT_MODEL.to_string()
 }
 
 fn default_review_model() -> String {
@@ -2950,7 +2931,7 @@ model_verbosity = "high"
         )?;
         assert_eq!(
             Config {
-                model: "o3".to_string(),
+                model: Some("o3".to_string()),
                 review_model: OPENAI_DEFAULT_REVIEW_MODEL.to_string(),
                 model_context_window: None,
                 model_auto_compact_token_limit: None,
@@ -2990,7 +2971,6 @@ model_verbosity = "high"
                 forced_login_method: None,
                 include_apply_patch_tool: false,
                 tools_web_search_request: false,
-                experimental_sandbox_command_assessment: false,
                 use_experimental_unified_exec_tool: false,
                 use_experimental_use_rmcp_client: false,
                 features: Features::with_defaults(),
@@ -3025,7 +3005,7 @@ model_verbosity = "high"
             fixture.codex_home(),
         )?;
         let expected_gpt3_profile_config = Config {
-            model: "gpt-3.5-turbo".to_string(),
+            model: Some("gpt-3.5-turbo".to_string()),
             review_model: OPENAI_DEFAULT_REVIEW_MODEL.to_string(),
             model_context_window: None,
             model_auto_compact_token_limit: None,
@@ -3065,7 +3045,6 @@ model_verbosity = "high"
             forced_login_method: None,
             include_apply_patch_tool: false,
             tools_web_search_request: false,
-            experimental_sandbox_command_assessment: false,
             use_experimental_unified_exec_tool: false,
             use_experimental_use_rmcp_client: false,
             features: Features::with_defaults(),
@@ -3115,7 +3094,7 @@ model_verbosity = "high"
             fixture.codex_home(),
         )?;
         let expected_zdr_profile_config = Config {
-            model: "o3".to_string(),
+            model: Some("o3".to_string()),
             review_model: OPENAI_DEFAULT_REVIEW_MODEL.to_string(),
             model_context_window: None,
             model_auto_compact_token_limit: None,
@@ -3155,7 +3134,6 @@ model_verbosity = "high"
             forced_login_method: None,
             include_apply_patch_tool: false,
             tools_web_search_request: false,
-            experimental_sandbox_command_assessment: false,
             use_experimental_unified_exec_tool: false,
             use_experimental_use_rmcp_client: false,
             features: Features::with_defaults(),
@@ -3191,7 +3169,7 @@ model_verbosity = "high"
             fixture.codex_home(),
         )?;
         let expected_gpt5_profile_config = Config {
-            model: "gpt-5.1".to_string(),
+            model: Some("gpt-5.1".to_string()),
             review_model: OPENAI_DEFAULT_REVIEW_MODEL.to_string(),
             model_context_window: None,
             model_auto_compact_token_limit: None,
@@ -3231,7 +3209,6 @@ model_verbosity = "high"
             forced_login_method: None,
             include_apply_patch_tool: false,
             tools_web_search_request: false,
-            experimental_sandbox_command_assessment: false,
             use_experimental_unified_exec_tool: false,
             use_experimental_use_rmcp_client: false,
             features: Features::with_defaults(),
