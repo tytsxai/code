@@ -14,7 +14,8 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde_json::json;
 use tokio::time::timeout;
-use tracing::{error, warn};
+use tracing::error;
+use tracing::warn;
 
 use crate::code_tool_runner::INVALID_PARAMS_ERROR_CODE;
 use crate::outgoing_message::OutgoingMessageSender;
@@ -155,10 +156,11 @@ async fn on_exec_approval_response(
         }
     };
 
-    let decision = code_protocol::protocol::ReviewDecision::from_value(&value).unwrap_or_else(|| {
-        error!("failed to deserialize exec approval response (value={value:?}); denying");
-        code_protocol::protocol::ReviewDecision::Denied
-    });
+    let decision =
+        code_protocol::protocol::ReviewDecision::from_value(&value).unwrap_or_else(|| {
+            error!("failed to deserialize exec approval response (value={value:?}); denying");
+            code_protocol::protocol::ReviewDecision::Denied
+        });
     let decision: ReviewDecision = decision.into();
 
     if let Err(err) = codex

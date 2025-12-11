@@ -1,16 +1,15 @@
-use code_core::protocol::{
-    Event,
-    EventMsg,
-    ExecCommandBeginEvent,
-    ExecCommandEndEvent,
-    TaskCompleteEvent,
-    McpInvocation,
-    McpToolCallBeginEvent,
-    OrderMeta,
-    PatchApplyBeginEvent,
-    PatchApplyEndEvent,
-};
-use code_tui::test_helpers::{render_chat_widget_to_vt100, ChatWidgetHarness};
+use code_core::protocol::Event;
+use code_core::protocol::EventMsg;
+use code_core::protocol::ExecCommandBeginEvent;
+use code_core::protocol::ExecCommandEndEvent;
+use code_core::protocol::McpInvocation;
+use code_core::protocol::McpToolCallBeginEvent;
+use code_core::protocol::OrderMeta;
+use code_core::protocol::PatchApplyBeginEvent;
+use code_core::protocol::PatchApplyEndEvent;
+use code_core::protocol::TaskCompleteEvent;
+use code_tui::test_helpers::ChatWidgetHarness;
+use code_tui::test_helpers::render_chat_widget_to_vt100;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::Duration;

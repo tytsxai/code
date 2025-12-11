@@ -39,7 +39,15 @@ parallel_instances = 1                  # 并行实例数（1-5）：>1 时同�
 # turn_limit = 50                      # 最大轮次限制
 # duration_limit_seconds = 3600        # 最大执行时长（秒）
 
-# max_concurrent_agents = 4            # 最大并发智能体数
+# max_concurrent_agents = 8            # 最大并发智能体数（默认 8，满足 8 角色并行）
+
+# 高吞吐池设置 (High Throughput Pool)
+# [auto_drive.high_throughput]
+# max_sessions = 20                    # 会话池最大并发
+# min_sessions = 5                     # 预热的最小会话数
+# scale_up_threshold = 0.8             # 利用率达到 80% 时扩容
+# scale_down_threshold = 0.3           # 利用率低于 30% 时收缩
+# backpressure_multiplier = 10         # 队列背压阈值 = max_sessions * multiplier
 
 # audit_enabled = false                # 启用审计日志
 # audit_path = "~/.code/audit.json"    # 审计日志路径

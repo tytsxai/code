@@ -1,37 +1,39 @@
 use crate::account_label::key_suffix;
 use crate::diff_render::create_diff_summary_with_width;
 use crate::exec_command::strip_bash_lc_and_escape;
+use crate::history::compat::ArgumentValue;
+use crate::history::compat::AssistantStreamState;
+use crate::history::compat::BackgroundEventRecord;
+use crate::history::compat::ContextRecord;
+use crate::history::compat::ExecAction;
+use crate::history::compat::ExecRecord;
+use crate::history::compat::ExecStatus;
+use crate::history::compat::HistoryId;
+use crate::history::compat::HistoryRecord;
+use crate::history::compat::ImageRecord;
+use crate::history::compat::MergedExecRecord;
+use crate::history::compat::PatchEventType as HistoryPatchEventType;
+use crate::history::compat::PatchRecord;
+use crate::history::compat::PlainMessageState;
+use crate::history::compat::PlanIcon;
+use crate::history::compat::PlanProgress;
+use crate::history::compat::PlanStep;
+use crate::history::compat::PlanUpdateState;
+use crate::history::compat::RunningToolState;
+use crate::history::compat::ToolArgument;
+use crate::history::compat::ToolCallState;
+use crate::history::compat::ToolResultPreview;
+use crate::history::compat::ToolStatus as HistoryToolStatus;
+use crate::history::compat::UpgradeNoticeState;
+use crate::insert_history::word_wrap_lines;
 use crate::sanitize::Mode as SanitizeMode;
 use crate::sanitize::Options as SanitizeOptions;
 use crate::sanitize::sanitize_for_tui;
 use crate::slash_command::SlashCommand;
-use crate::util::buffer::{fill_rect, write_line};
-use crate::insert_history::word_wrap_lines;
 use crate::text_formatting::format_json_compact;
-use crate::history::compat::{
-    AssistantStreamState,
-    BackgroundEventRecord,
-    ContextRecord,
-    ExecAction,
-    ExecRecord,
-    ExecStatus,
-    HistoryId,
-    HistoryRecord,
-    MergedExecRecord,
-    RunningToolState,
-    PatchEventType as HistoryPatchEventType,
-    PatchRecord,
-    ImageRecord,
-    PlanIcon,
-    PlanProgress,
-    PlanStep,
-    PlanUpdateState,
-    PlainMessageState,
-    ToolCallState,
-    ToolStatus as HistoryToolStatus,
-    UpgradeNoticeState,
-};
-use crate::history::compat::{ArgumentValue, ToolArgument, ToolResultPreview};
+use crate::util::buffer::fill_rect;
+use crate::util::buffer::write_line;
+use ::image::ImageReader;
 use base64::Engine;
 use code_ansi_escape::ansi_escape_line;
 use code_common::create_config_summary_entries;
@@ -47,8 +49,6 @@ use code_core::protocol::McpInvocation;
 use code_core::protocol::SessionConfiguredEvent;
 use code_core::protocol::TokenUsage;
 use code_protocol::num_format::format_with_separators;
-use ::image::ImageReader;
-use sha2::{Digest, Sha256};
 use mcp_types::EmbeddedResourceResource;
 use mcp_types::ResourceLink;
 use ratatui::prelude::*;
@@ -60,6 +60,8 @@ use ratatui::widgets::Padding;
 use ratatui::widgets::Paragraph;
 use ratatui::widgets::WidgetRef;
 use ratatui::widgets::Wrap;
+use sha2::Digest;
+use sha2::Sha256;
 use shlex::Shlex;
 
 use std::collections::HashMap;
@@ -71,83 +73,79 @@ use std::time::Instant;
 use std::time::SystemTime;
 use tracing::error;
 
-mod assistant;
+mod agent;
 mod animated;
+mod assistant;
+mod auto_drive;
 mod background;
-mod context;
+mod browser;
 mod card_style;
-mod exec;
+mod context;
 mod diff;
+mod exec;
 mod explore;
 mod image;
 mod loading;
-mod reasoning;
-mod tool;
-mod browser;
-mod agent;
-mod auto_drive;
-mod web_search;
-mod wait_status;
+mod plain;
 mod plan_update;
 mod rate_limits;
-mod plain;
-mod upgrade;
+mod reasoning;
 mod stream;
 mod text;
+mod tool;
+mod upgrade;
+mod wait_status;
+mod web_search;
 
-pub(crate) use assistant::{
-    assistant_markdown_lines,
-    compute_assistant_layout,
-    AssistantLayoutCache,
-    AssistantMarkdownCell,
-};
-pub(crate) use animated::AnimatedWelcomeCell;
-pub(crate) use background::BackgroundEventCell;
-pub(crate) use context::ContextCell;
-pub(crate) use exec::{
-    display_lines_from_record as exec_display_lines_from_record,
-    new_active_exec_command,
-    new_completed_exec_command,
-    ExecCell,
-    ParsedExecMetadata,
-};
-pub(crate) use diff::{
-    diff_lines_from_record,
-    diff_record_from_string,
-    new_diff_cell_from_string,
-    DiffCell,
-};
-pub(crate) use browser::BrowserSessionCell;
-pub(crate) use auto_drive::{AutoDriveActionKind, AutoDriveCardCell, AutoDriveStatus};
-pub(crate) use web_search::{
-    WebSearchSessionCell,
-    WebSearchStatus,
-};
-pub(crate) use agent::{AgentDetail, AgentRunCell, AgentStatusKind, AgentStatusPreview, StepProgress};
-pub(crate) use explore::{
-    explore_lines_from_record,
-    explore_lines_from_record_with_force,
-    explore_lines_without_truncation,
-    explore_record_push_from_parsed,
-    explore_record_update_status,
-    ExploreAggregationCell,
-};
-pub(crate) use rate_limits::RateLimitsCell;
 pub(crate) use crate::history::state::ExploreEntryStatus;
+pub(crate) use agent::AgentDetail;
+pub(crate) use agent::AgentRunCell;
+pub(crate) use agent::AgentStatusKind;
+pub(crate) use agent::AgentStatusPreview;
+pub(crate) use agent::StepProgress;
+pub(crate) use animated::AnimatedWelcomeCell;
+pub(crate) use assistant::AssistantLayoutCache;
+pub(crate) use assistant::AssistantMarkdownCell;
+pub(crate) use assistant::assistant_markdown_lines;
+pub(crate) use assistant::compute_assistant_layout;
+pub(crate) use auto_drive::AutoDriveActionKind;
+pub(crate) use auto_drive::AutoDriveCardCell;
+pub(crate) use auto_drive::AutoDriveStatus;
+pub(crate) use background::BackgroundEventCell;
+pub(crate) use browser::BrowserSessionCell;
+pub(crate) use context::ContextCell;
+pub(crate) use diff::DiffCell;
+pub(crate) use diff::diff_lines_from_record;
+pub(crate) use diff::diff_record_from_string;
+pub(crate) use diff::new_diff_cell_from_string;
+pub(crate) use exec::ExecCell;
+pub(crate) use exec::ParsedExecMetadata;
+pub(crate) use exec::display_lines_from_record as exec_display_lines_from_record;
+pub(crate) use exec::new_active_exec_command;
+pub(crate) use exec::new_completed_exec_command;
+pub(crate) use explore::ExploreAggregationCell;
+pub(crate) use explore::explore_lines_from_record;
+pub(crate) use explore::explore_lines_from_record_with_force;
+pub(crate) use explore::explore_lines_without_truncation;
+pub(crate) use explore::explore_record_push_from_parsed;
+pub(crate) use explore::explore_record_update_status;
 pub(crate) use image::ImageOutputCell;
 pub(crate) use loading::LoadingCell;
-pub(crate) use reasoning::CollapsibleReasoningCell;
-pub(crate) use tool::{RunningToolCallCell, ToolCallCell};
-pub(crate) use wait_status::WaitStatusCell;
+pub(crate) use plain::PlainHistoryCell;
+pub(crate) use plain::plain_message_state_from_lines;
+pub(crate) use plain::plain_message_state_from_paragraphs;
+pub(crate) use plain::plain_role_for_kind;
 pub(crate) use plan_update::PlanUpdateCell;
-pub(crate) use plain::{
-    plain_message_state_from_lines,
-    plain_message_state_from_paragraphs,
-    plain_role_for_kind,
-    PlainHistoryCell,
-};
-pub(crate) use stream::{stream_lines_from_state, StreamingContentCell};
+pub(crate) use rate_limits::RateLimitsCell;
+pub(crate) use reasoning::CollapsibleReasoningCell;
+pub(crate) use stream::StreamingContentCell;
+pub(crate) use stream::stream_lines_from_state;
+pub(crate) use tool::RunningToolCallCell;
+pub(crate) use tool::ToolCallCell;
 pub(crate) use upgrade::UpgradeNoticeCell;
+pub(crate) use wait_status::WaitStatusCell;
+pub(crate) use web_search::WebSearchSessionCell;
+pub(crate) use web_search::WebSearchStatus;
 
 // ==================== Core Types ====================
 
@@ -218,7 +216,6 @@ impl From<ExecKind> for ExecAction {
         }
     }
 }
-
 
 pub(crate) fn action_enum_from_parsed(
     parsed: &[code_core::parse_command::ParsedCommand],
@@ -550,7 +547,13 @@ impl MergedExecSegment {
         Self { record }
     }
 
-    fn exec_parts(&self) -> (Vec<Line<'static>>, Vec<Line<'static>>, Option<Line<'static>>) {
+    fn exec_parts(
+        &self,
+    ) -> (
+        Vec<Line<'static>>,
+        Vec<Line<'static>>,
+        Option<Line<'static>>,
+    ) {
         let exec_cell = ExecCell::from_record(self.record.clone());
         exec_cell.exec_render_parts()
     }
@@ -705,7 +708,6 @@ impl MergedExecCell {
         Some(kept)
     }
 }
-
 
 impl HistoryCell for MergedExecCell {
     fn as_any(&self) -> &dyn std::any::Any {
@@ -2115,20 +2117,14 @@ fn popular_commands_lines(_latest_version: Option<&str>) -> Vec<Line<'static>> {
         Span::from(" - "),
         Span::from(SlashCommand::Settings.description())
             .style(Style::default().add_modifier(Modifier::DIM)),
-        Span::styled(
-            " UPDATED",
-            Style::default().fg(crate::colors::primary()),
-        ),
+        Span::styled(" UPDATED", Style::default().fg(crate::colors::primary())),
     ]));
     lines.push(Line::from(vec![
         Span::styled("/auto", Style::default().fg(crate::colors::primary())),
         Span::from(" - "),
         Span::from(SlashCommand::Auto.description())
             .style(Style::default().add_modifier(Modifier::DIM)),
-        Span::styled(
-            " UPDATED",
-            Style::default().fg(crate::colors::primary()),
-        ),
+        Span::styled(" UPDATED", Style::default().fg(crate::colors::primary())),
     ]));
     lines.push(Line::from(vec![
         Span::styled("/chrome", Style::default().fg(crate::colors::primary())),
@@ -2153,10 +2149,7 @@ fn popular_commands_lines(_latest_version: Option<&str>) -> Vec<Line<'static>> {
         Span::from(" - "),
         Span::from(SlashCommand::Prompts.description())
             .style(Style::default().add_modifier(Modifier::DIM)),
-        Span::styled(
-            " NEW",
-            Style::default().fg(crate::colors::primary()),
-        ),
+        Span::styled(" NEW", Style::default().fg(crate::colors::primary())),
     ]));
 
     lines
@@ -2165,9 +2158,7 @@ fn popular_commands_lines(_latest_version: Option<&str>) -> Vec<Line<'static>> {
 /// Create a notice cell that shows the "Popular commands" immediately.
 /// If `connecting_mcp` is true, include a dim status line to inform users
 /// that external MCP servers are being connected in the background.
-pub(crate) fn new_upgrade_prelude(
-    latest_version: Option<&str>,
-) -> Option<UpgradeNoticeCell> {
+pub(crate) fn new_upgrade_prelude(latest_version: Option<&str>) -> Option<UpgradeNoticeCell> {
     if !crate::updates::upgrade_ui_enabled() {
         return None;
     }
@@ -2763,11 +2754,7 @@ fn heredoc_delimiter(token: &str) -> Option<String> {
     } else if delim.starts_with('\'') && delim.ends_with('\'') && delim.len() >= 2 {
         delim = delim[1..delim.len() - 1].to_string();
     }
-    if delim.is_empty() {
-        None
-    } else {
-        Some(delim)
-    }
+    if delim.is_empty() { None } else { Some(delim) }
 }
 
 fn split_heredoc_script_lines(script_tokens: &[String]) -> Vec<String> {
@@ -2779,16 +2766,11 @@ fn split_heredoc_script_lines(script_tokens: &[String]) -> Vec<String> {
     let mut current_has_assignment = false;
 
     for (idx, token) in script_tokens.iter().enumerate() {
-        if !current.is_empty()
-            && paren_depth == 0
-            && bracket_depth == 0
-            && brace_depth == 0
-        {
+        if !current.is_empty() && paren_depth == 0 && bracket_depth == 0 && brace_depth == 0 {
             let token_lower = token.to_ascii_lowercase();
             let current_first = current.first().map(|s| s.to_ascii_lowercase());
             let should_flush_before = is_statement_boundary_token(token)
-                && !(token_lower == "import"
-                    && current_first.as_deref() == Some("from"));
+                && !(token_lower == "import" && current_first.as_deref() == Some("from"));
             if should_flush_before {
                 let line = current.join(" ");
                 lines.push(line.trim().to_string());
@@ -2798,7 +2780,12 @@ fn split_heredoc_script_lines(script_tokens: &[String]) -> Vec<String> {
         }
 
         current.push(token.clone());
-        adjust_bracket_depth(token, &mut paren_depth, &mut bracket_depth, &mut brace_depth);
+        adjust_bracket_depth(
+            token,
+            &mut paren_depth,
+            &mut bracket_depth,
+            &mut brace_depth,
+        );
 
         if is_assignment_operator(token) {
             current_has_assignment = true;
@@ -2978,11 +2965,7 @@ fn merge_from_import_lines(lines: Vec<String>) -> Vec<String> {
             && idx + 1 < lines.len()
             && lines[idx + 1].trim_start().starts_with("import ")
         {
-            let combined = format!(
-                "{} {}",
-                line.trim_end(),
-                lines[idx + 1].trim_start()
-            );
+            let combined = format!("{} {}", line.trim_end(), lines[idx + 1].trim_start());
             merged.push(combined);
             idx += 2;
         } else {
@@ -2996,19 +2979,7 @@ fn merge_from_import_lines(lines: Vec<String>) -> Vec<String> {
 fn is_assignment_operator(token: &str) -> bool {
     matches!(
         token,
-        "="
-            | "+="
-            | "-="
-            | "*="
-            | "/="
-            | "//="
-            | "%="
-            | "^="
-            | "|="
-            | "&="
-            | "**="
-            | "<<="
-            | ">>="
+        "=" | "+=" | "-=" | "*=" | "/=" | "//=" | "%=" | "^=" | "|=" | "&=" | "**=" | "<<=" | ">>="
     )
 }
 
@@ -3034,7 +3005,6 @@ fn is_shell_executable(token: &str) -> bool {
             | "busybox"
     )
 }
-
 
 fn is_node_invocation_token(token: &str) -> bool {
     let trimmed = token.trim_matches(|c| c == '\'' || c == '"');
@@ -3483,24 +3453,26 @@ fn escape_token_for_display(token: &str) -> String {
 }
 
 fn is_shell_word(token: &str) -> bool {
-    token.chars().all(|ch| matches!(
-        ch,
-        'a'..='z'
-            | 'A'..='Z'
-            | '0'..='9'
-            | '_'
-            | '-'
-            | '.'
-            | '/'
-            | ':'
-            | ','
-            | '@'
-            | '%'
-            | '+'
-            | '='
-            | '['
-            | ']'
-    ))
+    token.chars().all(|ch| {
+        matches!(
+            ch,
+            'a'..='z'
+                | 'A'..='Z'
+                | '0'..='9'
+                | '_'
+                | '-'
+                | '.'
+                | '/'
+                | ':'
+                | ','
+                | '@'
+                | '%'
+                | '+'
+                | '='
+                | '['
+                | ']'
+        )
+    })
 }
 
 fn script_has_semicolon_outside_quotes(script: &str) -> bool {
@@ -4166,10 +4138,7 @@ fn arguments_from_json(value: &serde_json::Value) -> Vec<ToolArgument> {
     arguments_from_json_excluding(value, &[])
 }
 
-fn arguments_from_json_excluding(
-    value: &serde_json::Value,
-    exclude: &[&str],
-) -> Vec<ToolArgument> {
+fn arguments_from_json_excluding(value: &serde_json::Value, exclude: &[&str]) -> Vec<ToolArgument> {
     match value {
         serde_json::Value::Object(map) => map
             .iter()
@@ -4893,8 +4862,7 @@ fn lines_to_plain_text(lines: &[Line<'_>]) -> String {
 }
 
 fn line_to_plain_text(line: &Line<'_>) -> String {
-    line
-        .spans
+    line.spans
         .iter()
         .map(|sp| sp.content.as_ref())
         .collect::<String>()
@@ -5130,15 +5098,14 @@ fn try_new_completed_mcp_tool_call_with_image_output(
     match result {
         Ok(mcp_types::CallToolResult { content, .. }) => {
             if let Some(mcp_types::ContentBlock::ImageContent(image_block)) = content.first() {
-                let raw_data = match base64::engine::general_purpose::STANDARD
-                    .decode(&image_block.data)
-                {
-                    Ok(data) => data,
-                    Err(e) => {
-                        error!("Failed to decode image data: {e}");
-                        return None;
-                    }
-                };
+                let raw_data =
+                    match base64::engine::general_purpose::STANDARD.decode(&image_block.data) {
+                        Ok(data) => data,
+                        Err(e) => {
+                            error!("Failed to decode image data: {e}");
+                            return None;
+                        }
+                    };
                 let reader = match ImageReader::new(Cursor::new(&raw_data)).with_guessed_format() {
                     Ok(reader) => reader,
                     Err(e) => {
@@ -5403,13 +5370,12 @@ pub(crate) fn new_status_output(
             Ok(Some(auth)) => match auth.mode {
                 AuthMode::ApiKey => {
                     // Prefer suffix from auth.json; fall back to env var if needed
-                    let suffix =
-                        try_read_auth_json(&code_login::get_auth_file(&config.code_home))
-                            .ok()
-                            .and_then(|a| a.openai_api_key)
-                            .or_else(|| std::env::var(OPENAI_API_KEY_ENV_VAR).ok())
-                            .map(|k| key_suffix(&k))
-                            .unwrap_or_else(|| "????".to_string());
+                    let suffix = try_read_auth_json(&code_login::get_auth_file(&config.code_home))
+                        .ok()
+                        .and_then(|a| a.openai_api_key)
+                        .or_else(|| std::env::var(OPENAI_API_KEY_ENV_VAR).ok())
+                        .map(|k| key_suffix(&k))
+                        .unwrap_or_else(|| "????".to_string());
                     lines.push(Line::from(format!("  • Method: API key (…{suffix})")));
                 }
                 AuthMode::ChatGPT => {
@@ -5502,7 +5468,9 @@ pub(crate) fn new_status_output(
                     format_with_separators(remaining)
                 )));
                 if total_usage.total_tokens > limit_u64 {
-                    lines.push(Line::from("    • Compacting will trigger on the next turn".dim()));
+                    lines.push(Line::from(
+                        "    • Compacting will trigger on the next turn".dim(),
+                    ));
                 }
             }
             _ => {
@@ -5525,12 +5493,18 @@ pub(crate) fn new_status_output(
                             "  • {} tokens before overflow",
                             format_with_separators(remaining)
                         )));
-                        lines.push(Line::from("  • Auto-compaction runs after overflow errors".to_string()));
+                        lines.push(Line::from(
+                            "  • Auto-compaction runs after overflow errors".to_string(),
+                        ));
                     } else {
-                        lines.push(Line::from("  • Auto-compaction runs after overflow errors".to_string()));
+                        lines.push(Line::from(
+                            "  • Auto-compaction runs after overflow errors".to_string(),
+                        ));
                     }
                 } else {
-                    lines.push(Line::from("  • Auto-compaction runs after overflow errors".to_string()));
+                    lines.push(Line::from(
+                        "  • Auto-compaction runs after overflow errors".to_string(),
+                    ));
                 }
             }
         }
@@ -5543,7 +5517,10 @@ pub(crate) fn new_warning_event(message: String) -> PlainMessageState {
     let warn_style = Style::default().fg(crate::colors::warning());
     let mut lines: Vec<Line<'static>> = Vec::with_capacity(2);
     lines.push(Line::from("notice"));
-    lines.push(Line::from(vec![Span::styled(format!("⚠ {message}"), warn_style)]));
+    lines.push(Line::from(vec![Span::styled(
+        format!("⚠ {message}"),
+        warn_style,
+    )]));
     plain_message_state_from_lines(lines, HistoryCellType::Notice)
 }
 
@@ -5725,7 +5702,9 @@ fn diff_contains_line_edits(diff: &str) -> bool {
 }
 
 fn diff_contains_binary_markers(diff: &str) -> bool {
-    diff.contains("Binary files") || diff.contains("GIT binary patch") || diff.as_bytes().contains(&0)
+    diff.contains("Binary files")
+        || diff.contains("GIT binary patch")
+        || diff.as_bytes().contains(&0)
 }
 
 fn diff_contains_metadata_markers(diff: &str) -> bool {
@@ -5758,8 +5737,7 @@ impl PatchSummaryCell {
         let title = match record.patch_type {
             HistoryPatchEventType::ApprovalRequest => "proposed patch".to_string(),
             HistoryPatchEventType::ApplyFailure => "Patch failed".to_string(),
-            HistoryPatchEventType::ApplyBegin { .. }
-            | HistoryPatchEventType::ApplySuccess => {
+            HistoryPatchEventType::ApplyBegin { .. } | HistoryPatchEventType::ApplySuccess => {
                 if rename_only {
                     "Renamed".to_string()
                 } else if noop_only {
@@ -5806,10 +5784,7 @@ impl PatchSummaryCell {
         .into_iter()
         .collect();
 
-        if matches!(
-            self.record.patch_type,
-            HistoryPatchEventType::ApplyFailure
-        ) {
+        if matches!(self.record.patch_type, HistoryPatchEventType::ApplyFailure) {
             if let Some(metadata) = &self.record.failure {
                 if !lines.is_empty() {
                     lines.push(Line::default());
@@ -5997,18 +5972,29 @@ pub(crate) fn trim_empty_lines(mut lines: Vec<Line<'static>>) -> Vec<Line<'stati
     result
 }
 
-pub(crate) fn cell_from_record(record: &crate::history::state::HistoryRecord, cfg: &Config) -> Box<dyn HistoryCell> {
+pub(crate) fn cell_from_record(
+    record: &crate::history::state::HistoryRecord,
+    cfg: &Config,
+) -> Box<dyn HistoryCell> {
     match record {
         HistoryRecord::PlainMessage(state) => Box::new(PlainHistoryCell::from_state(state.clone())),
-        HistoryRecord::WaitStatus(state) => Box::new(wait_status::WaitStatusCell::from_state(state.clone())),
+        HistoryRecord::WaitStatus(state) => {
+            Box::new(wait_status::WaitStatusCell::from_state(state.clone()))
+        }
         HistoryRecord::Loading(state) => Box::new(loading::LoadingCell::from_state(state.clone())),
         HistoryRecord::RunningTool(state) => {
             Box::new(tool::RunningToolCallCell::from_state(state.clone()))
         }
         HistoryRecord::ToolCall(state) => Box::new(tool::ToolCallCell::from_state(state.clone())),
-        HistoryRecord::PlanUpdate(state) => Box::new(plan_update::PlanUpdateCell::from_state(state.clone())),
-        HistoryRecord::UpgradeNotice(state) => Box::new(upgrade::UpgradeNoticeCell::from_state(state.clone())),
-        HistoryRecord::Reasoning(state) => Box::new(reasoning::CollapsibleReasoningCell::from_state(state.clone())),
+        HistoryRecord::PlanUpdate(state) => {
+            Box::new(plan_update::PlanUpdateCell::from_state(state.clone()))
+        }
+        HistoryRecord::UpgradeNotice(state) => {
+            Box::new(upgrade::UpgradeNoticeCell::from_state(state.clone()))
+        }
+        HistoryRecord::Reasoning(state) => Box::new(
+            reasoning::CollapsibleReasoningCell::from_state(state.clone()),
+        ),
         HistoryRecord::Exec(state) => Box::new(exec::ExecCell::from_record(state.clone())),
         HistoryRecord::MergedExec(state) => Box::new(MergedExecCell::from_state(state.clone())),
         HistoryRecord::AssistantStream(state) => {
@@ -6018,23 +6004,32 @@ pub(crate) fn cell_from_record(record: &crate::history::state::HistoryRecord, cf
                 cfg.cwd.clone(),
             ))
         }
-        HistoryRecord::AssistantMessage(state) => {
-            Box::new(assistant::AssistantMarkdownCell::from_state(state.clone(), cfg))
-        }
+        HistoryRecord::AssistantMessage(state) => Box::new(
+            assistant::AssistantMarkdownCell::from_state(state.clone(), cfg),
+        ),
         HistoryRecord::Diff(state) => Box::new(diff::DiffCell::from_record(state.clone())),
         HistoryRecord::Image(state) => Box::new(image::ImageOutputCell::from_record(state.clone())),
         HistoryRecord::Explore(state) => {
             Box::new(explore::ExploreAggregationCell::from_record(state.clone()))
         }
-        HistoryRecord::RateLimits(state) => Box::new(rate_limits::RateLimitsCell::from_record(state.clone())),
+        HistoryRecord::RateLimits(state) => {
+            Box::new(rate_limits::RateLimitsCell::from_record(state.clone()))
+        }
         HistoryRecord::Patch(state) => Box::new(PatchSummaryCell::from_record(state.clone())),
-        HistoryRecord::BackgroundEvent(state) => Box::new(background::BackgroundEventCell::new(state.clone())),
-        HistoryRecord::Notice(state) => Box::new(PlainHistoryCell::from_notice_record(state.clone())),
+        HistoryRecord::BackgroundEvent(state) => {
+            Box::new(background::BackgroundEventCell::new(state.clone()))
+        }
+        HistoryRecord::Notice(state) => {
+            Box::new(PlainHistoryCell::from_notice_record(state.clone()))
+        }
         HistoryRecord::Context(state) => Box::new(context::ContextCell::new(state.clone())),
     }
 }
 
-pub(crate) fn lines_from_record(record: &crate::history::state::HistoryRecord, cfg: &Config) -> Vec<Line<'static>> {
+pub(crate) fn lines_from_record(
+    record: &crate::history::state::HistoryRecord,
+    cfg: &Config,
+) -> Vec<Line<'static>> {
     match record {
         HistoryRecord::Explore(state) => return explore_lines_from_record(state),
         _ => {}
@@ -6077,10 +6072,7 @@ pub(crate) fn record_from_cell(cell: &dyn HistoryCell) -> Option<HistoryRecord> 
     if let Some(tool_call) = cell.as_any().downcast_ref::<tool::ToolCallCell>() {
         return Some(HistoryRecord::ToolCall(tool_call.state().clone()));
     }
-    if let Some(running_tool) = cell
-        .as_any()
-        .downcast_ref::<tool::RunningToolCallCell>()
-    {
+    if let Some(running_tool) = cell.as_any().downcast_ref::<tool::RunningToolCallCell>() {
         return Some(HistoryRecord::RunningTool(running_tool.state().clone()));
     }
     if let Some(plan) = cell.as_any().downcast_ref::<plan_update::PlanUpdateCell>() {
@@ -6098,10 +6090,7 @@ pub(crate) fn record_from_cell(cell: &dyn HistoryCell) -> Option<HistoryRecord> 
     if let Some(exec) = cell.as_any().downcast_ref::<exec::ExecCell>() {
         return Some(HistoryRecord::Exec(exec.record.clone()));
     }
-    if let Some(stream) = cell
-        .as_any()
-        .downcast_ref::<stream::StreamingContentCell>()
-    {
+    if let Some(stream) = cell.as_any().downcast_ref::<stream::StreamingContentCell>() {
         return Some(HistoryRecord::AssistantStream(stream.state().clone()));
     }
     if let Some(assistant) = cell
@@ -6119,10 +6108,7 @@ pub(crate) fn record_from_cell(cell: &dyn HistoryCell) -> Option<HistoryRecord> 
     if let Some(patch) = cell.as_any().downcast_ref::<PatchSummaryCell>() {
         return Some(HistoryRecord::Patch(patch.record().clone()));
     }
-    if let Some(rate_limits) = cell
-        .as_any()
-        .downcast_ref::<rate_limits::RateLimitsCell>()
-    {
+    if let Some(rate_limits) = cell.as_any().downcast_ref::<rate_limits::RateLimitsCell>() {
         return Some(HistoryRecord::RateLimits(rate_limits.record().clone()));
     }
     None
@@ -6162,9 +6148,7 @@ fn format_inline_shell_for_display(command_escaped: &str) -> Option<String> {
         return None;
     }
 
-    let shell_idx = tokens
-        .iter()
-        .position(|t| is_shell_invocation_token(t))?;
+    let shell_idx = tokens.iter().position(|t| is_shell_invocation_token(t))?;
 
     let flag_idx = shell_idx + 1;
     if flag_idx >= tokens.len() {

@@ -3,7 +3,8 @@
 //! This module provides structured telemetry collection for Auto Drive sessions,
 //! including span management and metrics tracking.
 
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use std::time::Instant;
 
 use chrono::Utc;
 
@@ -94,7 +95,7 @@ impl TelemetryCollector {
         self.session_started_at = Some(Instant::now());
 
         self.session_span = Some(SpanContext {
-            span_id: span_id.clone(),
+            span_id,
             parent_id: None,
             name: "auto_drive_session".to_string(),
             started_at: Instant::now(),
@@ -116,11 +117,7 @@ impl TelemetryCollector {
 
     /// Starts tracking a turn.
     pub fn start_turn(&mut self, turn_number: u32) -> TurnSpan {
-        let span_id = format!(
-            "turn-{}-{}",
-            turn_number,
-            Utc::now().timestamp_millis()
-        );
+        let span_id = format!("turn-{}-{}", turn_number, Utc::now().timestamp_millis());
 
         if self.debug_enabled {
             tracing::debug!(turn = turn_number, "Turn started");

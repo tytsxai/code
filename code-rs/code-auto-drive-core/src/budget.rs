@@ -3,7 +3,8 @@
 //! This module provides tracking and enforcement of resource limits including
 //! token budgets, turn counts, and duration limits.
 
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use std::time::Instant;
 
 /// Configuration for budget limits.
 #[derive(Clone, Debug, Default)]
@@ -42,6 +43,10 @@ pub enum BudgetAlert {
     TurnLimitReached { count: u32, limit: u32 },
     /// Duration limit has been exceeded.
     DurationExceeded { elapsed: Duration, limit: Duration },
+    /// Session pool queue is approaching backpressure threshold.
+    BackpressureWarning { queue_size: i32, limit: i32 },
+    /// Session pool queue exceeded backpressure threshold.
+    BackpressureExceeded { queue_size: i32, limit: i32 },
 }
 
 /// Controller for managing resource budgets.
@@ -101,13 +106,13 @@ impl BudgetController {
         }
 
         // Check turn limit
-        if let Some(limit) = self.config.turn_limit {
-            if self.current_usage.turns_completed >= limit {
-                return Some(BudgetAlert::TurnLimitReached {
-                    count: self.current_usage.turns_completed,
-                    limit,
-                });
-            }
+        if let Some(limit) = self.config.turn_limit
+            && self.current_usage.turns_completed >= limit
+        {
+            return Some(BudgetAlert::TurnLimitReached {
+                count: self.current_usage.turns_completed,
+                limit,
+            });
         }
 
         // Check duration limit

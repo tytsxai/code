@@ -2,15 +2,17 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use anyhow::Result;
-use futures_util::{SinkExt, StreamExt};
+use futures_util::SinkExt;
+use futures_util::StreamExt;
+use once_cell::sync::Lazy;
 use serde::Deserialize;
 use serde_json::Value;
+use std::sync::Mutex;
 use tokio::time::sleep;
 use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::Message;
-use tracing::{info, warn};
-use once_cell::sync::Lazy;
-use std::sync::Mutex;
+use tracing::info;
+use tracing::warn;
 
 use crate::codex::Session;
 
@@ -26,7 +28,8 @@ struct BridgeMeta {
     started_at: Option<String>,
 }
 
-static DESIRED_LEVELS: Lazy<Mutex<Vec<String>>> = Lazy::new(|| Mutex::new(vec!["errors".to_string()]));
+static DESIRED_LEVELS: Lazy<Mutex<Vec<String>>> =
+    Lazy::new(|| Mutex::new(vec!["errors".to_string()]));
 static DESIRED_CAPABILITIES: Lazy<Mutex<Vec<String>>> = Lazy::new(|| Mutex::new(Vec::new()));
 static CONTROL_SENDER: Lazy<Mutex<Option<tokio::sync::mpsc::UnboundedSender<String>>>> =
     Lazy::new(|| Mutex::new(None));
@@ -35,13 +38,21 @@ static DESIRED_FILTER: Lazy<Mutex<String>> = Lazy::new(|| Mutex::new("off".to_st
 #[allow(dead_code)]
 pub(crate) fn set_bridge_levels(levels: Vec<String>) {
     let mut guard = DESIRED_LEVELS.lock().unwrap();
-    *guard = if levels.is_empty() { vec!["errors".to_string()] } else { levels };
+    *guard = if levels.is_empty() {
+        vec!["errors".to_string()]
+    } else {
+        levels
+    };
 }
 
 #[allow(dead_code)]
 pub(crate) fn set_bridge_subscription(levels: Vec<String>, capabilities: Vec<String>) {
     let mut lvl = DESIRED_LEVELS.lock().unwrap();
-    *lvl = if levels.is_empty() { vec!["errors".to_string()] } else { levels };
+    *lvl = if levels.is_empty() {
+        vec!["errors".to_string()]
+    } else {
+        levels
+    };
     let mut caps = DESIRED_CAPABILITIES.lock().unwrap();
     *caps = capabilities;
 }
@@ -177,7 +188,10 @@ fn summarize(raw: &str) -> String {
         if let Some(msg) = val.get("message").and_then(|v| v.as_str()) {
             parts.push(format!("message: {msg}"));
         }
-        return format!("<code_bridge_event>\n{}\n</code_bridge_event>", parts.join("\n"));
+        return format!(
+            "<code_bridge_event>\n{}\n</code_bridge_event>",
+            parts.join("\n")
+        );
     }
     raw.to_string()
 }

@@ -1,19 +1,29 @@
-use code_core::config_types::{AutoResolveAttemptLimit, ReasoningEffort};
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use code_core::config_types::AutoResolveAttemptLimit;
+use code_core::config_types::ReasoningEffort;
+use crossterm::event::KeyCode;
+use crossterm::event::KeyEvent;
+use crossterm::event::KeyModifiers;
 use ratatui::buffer::Buffer;
-use ratatui::layout::{Alignment, Rect};
-use ratatui::style::{Modifier, Style};
-use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, Clear, Paragraph, Widget};
+use ratatui::layout::Alignment;
+use ratatui::layout::Rect;
+use ratatui::style::Modifier;
+use ratatui::style::Style;
+use ratatui::text::Line;
+use ratatui::text::Span;
+use ratatui::widgets::Block;
+use ratatui::widgets::Borders;
+use ratatui::widgets::Clear;
+use ratatui::widgets::Paragraph;
+use ratatui::widgets::Widget;
 use std::cell::Cell;
 
 use crate::app_event::AppEvent;
 use crate::app_event_sender::AppEventSender;
 use crate::colors;
 
+use super::BottomPane;
 use super::bottom_pane_view::BottomPaneView;
 use super::scroll_state::ScrollState;
-use super::BottomPane;
 
 const DEFAULT_VISIBLE_ROWS: usize = 4;
 
@@ -90,7 +100,9 @@ impl ReviewSettingsView {
     fn toggle_auto_resolve(&mut self) {
         self.auto_resolve_enabled = !self.auto_resolve_enabled;
         self.app_event_tx
-            .send(AppEvent::UpdateReviewAutoResolveEnabled(self.auto_resolve_enabled));
+            .send(AppEvent::UpdateReviewAutoResolveEnabled(
+                self.auto_resolve_enabled,
+            ));
     }
 
     fn adjust_auto_resolve_attempts(&mut self, forward: bool) {
@@ -116,18 +128,23 @@ impl ReviewSettingsView {
         self.auto_attempt_index = next;
         self.auto_resolve_attempts = allowed[next];
         self.app_event_tx
-            .send(AppEvent::UpdateReviewAutoResolveAttempts(self.auto_resolve_attempts));
+            .send(AppEvent::UpdateReviewAutoResolveAttempts(
+                self.auto_resolve_attempts,
+            ));
     }
 
     fn open_review_model_selector(&self) {
-        self.app_event_tx
-            .send(AppEvent::ShowReviewModelSelector);
+        self.app_event_tx.send(AppEvent::ShowReviewModelSelector);
     }
 
     fn build_rows(&self) -> (Vec<RowData>, Vec<usize>, Vec<SelectionKind>) {
         let rows = vec![RowData::CustomModel, RowData::Toggle, RowData::Attempts];
         let selection_rows = vec![0, 1, 2];
-        let selection_kinds = vec![SelectionKind::Model, SelectionKind::Toggle, SelectionKind::Attempts];
+        let selection_kinds = vec![
+            SelectionKind::Model,
+            SelectionKind::Toggle,
+            SelectionKind::Attempts,
+        ];
         (rows, selection_rows, selection_kinds)
     }
 
@@ -136,7 +153,11 @@ impl ReviewSettingsView {
             return 1;
         }
         let hint = self.viewport_rows.get();
-        let target = if hint == 0 { DEFAULT_VISIBLE_ROWS } else { hint };
+        let target = if hint == 0 {
+            DEFAULT_VISIBLE_ROWS
+        } else {
+            hint
+        };
         target.clamp(1, total)
     }
 
@@ -193,7 +214,9 @@ impl ReviewSettingsView {
                         .fg(colors::primary())
                         .add_modifier(Modifier::BOLD)
                 } else {
-                    Style::default().fg(colors::text()).add_modifier(Modifier::BOLD)
+                    Style::default()
+                        .fg(colors::text())
+                        .add_modifier(Modifier::BOLD)
                 };
                 let value_style = if selected {
                     Style::default()
@@ -237,7 +260,9 @@ impl ReviewSettingsView {
                         .fg(colors::primary())
                         .add_modifier(Modifier::BOLD)
                 } else {
-                    Style::default().fg(colors::text()).add_modifier(Modifier::BOLD)
+                    Style::default()
+                        .fg(colors::text())
+                        .add_modifier(Modifier::BOLD)
                 };
                 let status_span = if self.auto_resolve_enabled {
                     Span::styled("On", Style::default().fg(colors::success()))
@@ -267,12 +292,18 @@ impl ReviewSettingsView {
                         .fg(colors::primary())
                         .add_modifier(Modifier::BOLD)
                 } else if self.auto_resolve_enabled {
-                    Style::default().fg(colors::text()).add_modifier(Modifier::BOLD)
+                    Style::default()
+                        .fg(colors::text())
+                        .add_modifier(Modifier::BOLD)
                 } else {
-                    Style::default().fg(colors::text_dim()).add_modifier(Modifier::BOLD)
+                    Style::default()
+                        .fg(colors::text_dim())
+                        .add_modifier(Modifier::BOLD)
                 };
                 let value_style = if selected {
-                    Style::default().fg(colors::function()).add_modifier(Modifier::BOLD)
+                    Style::default()
+                        .fg(colors::function())
+                        .add_modifier(Modifier::BOLD)
                 } else if self.auto_resolve_attempts == 0 {
                     Style::default().fg(colors::text_dim())
                 } else {
@@ -325,13 +356,21 @@ impl ReviewSettingsView {
             .copied();
 
         match key_event {
-            KeyEvent { code: KeyCode::Up, .. } => {
+            KeyEvent {
+                code: KeyCode::Up, ..
+            } => {
                 self.state.move_up_wrap(total);
             }
-            KeyEvent { code: KeyCode::Down, .. } => {
+            KeyEvent {
+                code: KeyCode::Down,
+                ..
+            } => {
                 self.state.move_down_wrap(total);
             }
-            KeyEvent { code: KeyCode::Left, .. } => {
+            KeyEvent {
+                code: KeyCode::Left,
+                ..
+            } => {
                 if let Some(kind) = current_kind {
                     match kind {
                         SelectionKind::Toggle => self.toggle_auto_resolve(),
@@ -340,7 +379,10 @@ impl ReviewSettingsView {
                     }
                 }
             }
-            KeyEvent { code: KeyCode::Right, .. } => {
+            KeyEvent {
+                code: KeyCode::Right,
+                ..
+            } => {
                 if let Some(kind) = current_kind {
                     match kind {
                         SelectionKind::Toggle => self.toggle_auto_resolve(),
@@ -349,8 +391,15 @@ impl ReviewSettingsView {
                     }
                 }
             }
-            KeyEvent { code: KeyCode::Char(' '), .. }
-            | KeyEvent { code: KeyCode::Enter, modifiers: KeyModifiers::NONE, .. } => {
+            KeyEvent {
+                code: KeyCode::Char(' '),
+                ..
+            }
+            | KeyEvent {
+                code: KeyCode::Enter,
+                modifiers: KeyModifiers::NONE,
+                ..
+            } => {
                 if let Some(kind) = current_kind {
                     match kind {
                         SelectionKind::Toggle => self.toggle_auto_resolve(),
@@ -370,7 +419,9 @@ impl ReviewSettingsView {
                     }
                 }
             }
-            KeyEvent { code: KeyCode::Esc, .. } => {
+            KeyEvent {
+                code: KeyCode::Esc, ..
+            } => {
                 self.is_complete = true;
             }
             _ => {}
@@ -462,7 +513,11 @@ impl<'a> BottomPaneView<'a> for ReviewSettingsView {
 
         let (rows, selection_rows, _) = self.build_rows();
         let selection_count = selection_rows.len();
-        let selected_idx = self.state.selected_idx.unwrap_or(0).min(selection_count.saturating_sub(1));
+        let selected_idx = self
+            .state
+            .selected_idx
+            .unwrap_or(0)
+            .min(selection_count.saturating_sub(1));
         let selected_row_index = selection_rows.get(selected_idx).copied().unwrap_or(0);
 
         let mut visible_lines: Vec<Line> = Vec::new();

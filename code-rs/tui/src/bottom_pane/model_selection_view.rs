@@ -1,16 +1,23 @@
-use super::bottom_pane_view::BottomPaneView;
-use super::settings_panel::{render_panel, PanelFrameStyle};
 use super::BottomPane;
-use crate::app_event::{AppEvent, ModelSelectionKind};
+use super::bottom_pane_view::BottomPaneView;
+use super::settings_panel::PanelFrameStyle;
+use super::settings_panel::render_panel;
+use crate::app_event::AppEvent;
+use crate::app_event::ModelSelectionKind;
 use crate::app_event_sender::AppEventSender;
 use code_common::model_presets::ModelPreset;
 use code_core::config_types::ReasoningEffort;
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::KeyCode;
+use crossterm::event::KeyEvent;
+use crossterm::event::KeyModifiers;
 use ratatui::buffer::Buffer;
-use ratatui::layout::{Alignment, Rect};
+use ratatui::layout::Alignment;
+use ratatui::layout::Rect;
 use ratatui::prelude::Widget;
-use ratatui::style::{Modifier, Style};
-use ratatui::text::{Line, Span};
+use ratatui::style::Modifier;
+use ratatui::style::Style;
+use ratatui::text::Line;
+use ratatui::text::Span;
 use ratatui::widgets::Paragraph;
 use std::cmp::Ordering;
 
@@ -180,11 +187,7 @@ impl ModelSelectionView {
         }
 
         if include_follow_chat {
-            if flat_presets.is_empty() {
-                0
-            } else {
-                1
-            }
+            if flat_presets.is_empty() { 0 } else { 1 }
         } else {
             0
         }
@@ -259,8 +262,9 @@ impl ModelSelectionView {
                     match self.target {
                         ModelSelectionTarget::Session => {}
                         ModelSelectionTarget::Review => {
-                            let _ =
-                                self.app_event_tx.send(AppEvent::UpdateReviewUseChatModel(true));
+                            let _ = self
+                                .app_event_tx
+                                .send(AppEvent::UpdateReviewUseChatModel(true));
                         }
                         ModelSelectionTarget::Planning => {
                             let _ = self
@@ -286,28 +290,28 @@ impl ModelSelectionView {
                                 });
                             }
                             ModelSelectionTarget::Review => {
-                                let _ = self
-                                    .app_event_tx
-                                    .send(AppEvent::UpdateReviewModelSelection {
-                                        model: flat_preset.model.clone(),
-                                        effort: flat_preset.effort,
-                                    });
+                                let _ =
+                                    self.app_event_tx
+                                        .send(AppEvent::UpdateReviewModelSelection {
+                                            model: flat_preset.model.clone(),
+                                            effort: flat_preset.effort,
+                                        });
                             }
                             ModelSelectionTarget::Planning => {
-                                let _ = self
-                                    .app_event_tx
-                                    .send(AppEvent::UpdatePlanningModelSelection {
+                                let _ = self.app_event_tx.send(
+                                    AppEvent::UpdatePlanningModelSelection {
                                         model: flat_preset.model.clone(),
                                         effort: flat_preset.effort,
-                                    });
+                                    },
+                                );
                             }
                             ModelSelectionTarget::AutoDrive => {
-                                let _ = self
-                                    .app_event_tx
-                                    .send(AppEvent::UpdateAutoDriveModelSelection {
+                                let _ = self.app_event_tx.send(
+                                    AppEvent::UpdateAutoDriveModelSelection {
                                         model: flat_preset.model.clone(),
                                         effort: flat_preset.effort,
-                                    });
+                                    },
+                                );
                             }
                         }
                     }
@@ -350,7 +354,8 @@ impl ModelSelectionView {
 
     fn sorted_indices(&self) -> Vec<usize> {
         let mut indices: Vec<usize> = (0..self.flat_presets.len()).collect();
-        indices.sort_by(|&a, &b| Self::compare_presets(&self.flat_presets[a], &self.flat_presets[b]));
+        indices
+            .sort_by(|&a, &b| Self::compare_presets(&self.flat_presets[a], &self.flat_presets[b]));
         indices
     }
 
@@ -430,19 +435,35 @@ impl ModelSelectionView {
 impl ModelSelectionView {
     pub(crate) fn handle_key_event_direct(&mut self, key_event: KeyEvent) -> bool {
         match key_event {
-            KeyEvent { code: KeyCode::Up, modifiers: KeyModifiers::NONE, .. } => {
+            KeyEvent {
+                code: KeyCode::Up,
+                modifiers: KeyModifiers::NONE,
+                ..
+            } => {
                 self.move_selection_up();
                 true
             }
-            KeyEvent { code: KeyCode::Down, modifiers: KeyModifiers::NONE, .. } => {
+            KeyEvent {
+                code: KeyCode::Down,
+                modifiers: KeyModifiers::NONE,
+                ..
+            } => {
                 self.move_selection_down();
                 true
             }
-            KeyEvent { code: KeyCode::Enter, modifiers: KeyModifiers::NONE, .. } => {
+            KeyEvent {
+                code: KeyCode::Enter,
+                modifiers: KeyModifiers::NONE,
+                ..
+            } => {
                 self.confirm_selection();
                 true
             }
-            KeyEvent { code: KeyCode::Esc, modifiers: KeyModifiers::NONE, .. } => {
+            KeyEvent {
+                code: KeyCode::Esc,
+                modifiers: KeyModifiers::NONE,
+                ..
+            } => {
                 self.send_closed(false);
                 true
             }
@@ -508,7 +529,10 @@ impl ModelSelectionView {
                 .fg(crate::colors::text_bright())
                 .add_modifier(Modifier::BOLD);
             let desc_style = Style::default().fg(crate::colors::text_dim());
-            lines.push(Line::from(vec![Span::styled("Follow Chat Mode", header_style)]));
+            lines.push(Line::from(vec![Span::styled(
+                "Follow Chat Mode",
+                header_style,
+            )]));
             lines.push(Line::from(vec![Span::styled(
                 "Use the active chat model and reasoning; stays in sync as chat changes.",
                 desc_style,
@@ -551,7 +575,9 @@ impl ModelSelectionView {
         let mut previous_model: Option<&str> = None;
         let entries = self.entries();
         for (entry_idx, entry) in entries.iter().enumerate() {
-            let EntryKind::Preset(preset_index) = entry else { continue };
+            let EntryKind::Preset(preset_index) = entry else {
+                continue;
+            };
             let flat_preset = &self.flat_presets[*preset_index];
             if previous_model
                 .map(|m| !m.eq_ignore_ascii_case(&flat_preset.model))

@@ -3,9 +3,11 @@
 //! This module provides data structures and logic for collecting and displaying
 //! progress information during Auto Drive execution.
 
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use std::time::Instant;
 
-use crate::budget::{BudgetAlert, ResourceUsage};
+use crate::budget::BudgetAlert;
+use crate::budget::ResourceUsage;
 use crate::diagnostics::DiagnosticAlert;
 use crate::scheduler::AgentState;
 
@@ -295,11 +297,11 @@ impl ProgressCollector {
     pub fn update_from_usage(&mut self, usage: &ResourceUsage, budget: Option<u64>) {
         self.token_metrics.total_tokens = usage.total_tokens;
         self.token_metrics.budget = budget;
-        if let Some(b) = budget {
-            if b > 0 {
-                self.token_metrics.budget_percentage =
-                    Some((usage.total_tokens as f32 / b as f32) * 100.0);
-            }
+        if let Some(b) = budget
+            && b > 0
+        {
+            self.token_metrics.budget_percentage =
+                Some((usage.total_tokens as f32 / b as f32) * 100.0);
         }
     }
 
@@ -334,7 +336,12 @@ impl ProgressCollector {
     }
 
     /// Records a compaction event.
-    pub fn record_compaction(&mut self, tokens_before: u64, tokens_after: u64, items_removed: usize) {
+    pub fn record_compaction(
+        &mut self,
+        tokens_before: u64,
+        tokens_after: u64,
+        items_removed: usize,
+    ) {
         self.compaction = Some(CompactionNotification::new(
             tokens_before,
             tokens_after,
@@ -383,7 +390,7 @@ impl ProgressCollector {
             .unwrap_or(Duration::ZERO);
 
         ProgressViewModel {
-            phase: self.phase.clone(),
+            phase: self.phase,
             turns_completed: self.turns_completed,
             elapsed,
             token_metrics: self.token_metrics.clone(),

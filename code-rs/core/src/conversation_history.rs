@@ -38,7 +38,6 @@ impl ConversationHistory {
     pub(crate) fn replace(&mut self, items: Vec<ResponseItem>) {
         self.items = items;
     }
-
 }
 
 /// Anything that is not a system message or "reasoning" message is considered

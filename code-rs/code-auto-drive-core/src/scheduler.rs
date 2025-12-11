@@ -3,7 +3,8 @@
 //! This module provides scheduling and coordination of agent tasks with
 //! configurable concurrency limits and result aggregation.
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
+use std::collections::VecDeque;
 use std::time::Instant;
 
 use crate::AutoTurnAgentsTiming;
@@ -109,8 +110,12 @@ impl AgentScheduler {
 
                 // Get next pending task
                 if let Some(task) = self.pending_queue.pop_front() {
-                    self.active_agents
-                        .insert(task.id, AgentState::Running { started_at: Instant::now() });
+                    self.active_agents.insert(
+                        task.id,
+                        AgentState::Running {
+                            started_at: Instant::now(),
+                        },
+                    );
                     Some(task)
                 } else {
                     None
@@ -128,8 +133,12 @@ impl AgentScheduler {
                 }
 
                 if let Some(task) = self.pending_queue.pop_front() {
-                    self.active_agents
-                        .insert(task.id, AgentState::Running { started_at: Instant::now() });
+                    self.active_agents.insert(
+                        task.id,
+                        AgentState::Running {
+                            started_at: Instant::now(),
+                        },
+                    );
                     Some(task)
                 } else {
                     None
@@ -168,7 +177,8 @@ impl AgentScheduler {
 
             self.next_completion_order += 1;
             self.results.push(result.clone());
-            self.active_agents.insert(id, AgentState::Completed { result });
+            self.active_agents
+                .insert(id, AgentState::Completed { result });
         }
     }
 
@@ -236,7 +246,7 @@ impl AgentScheduler {
 
 impl Default for AgentScheduler {
     fn default() -> Self {
-        Self::new(4)
+        Self::new(8)
     }
 }
 

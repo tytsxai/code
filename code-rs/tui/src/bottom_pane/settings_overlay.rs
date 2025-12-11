@@ -63,7 +63,9 @@ impl SettingsSection {
             SettingsSection::Limits => "Inspect API usage, rate limits, and reset windows.",
             SettingsSection::Chrome => "Connect to Chrome or switch browser integrations.",
             SettingsSection::Mcp => "Enable and manage local MCP servers for tooling.",
-            SettingsSection::Notifications => "Adjust desktop and terminal notification preferences.",
+            SettingsSection::Notifications => {
+                "Adjust desktop and terminal notification preferences."
+            }
             SettingsSection::Prompts => "Create and edit custom prompt snippets.",
         }
     }
@@ -99,7 +101,9 @@ impl SettingsSection {
             "limit" | "limits" | "usage" => Some(SettingsSection::Limits),
             "chrome" | "browser" => Some(SettingsSection::Chrome),
             "mcp" => Some(SettingsSection::Mcp),
-            "notification" | "notifications" | "notify" | "notif" => Some(SettingsSection::Notifications),
+            "notification" | "notifications" | "notify" | "notif" => {
+                Some(SettingsSection::Notifications)
+            }
             _ => None,
         }
     }

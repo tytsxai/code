@@ -1,22 +1,24 @@
 #![cfg(test)]
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use code_core::protocol::{
-    AgentMessageDeltaEvent,
-    AgentMessageEvent,
-    AgentReasoningDeltaEvent,
-    AgentReasoningEvent,
-    BrowserSnapshotEvent,
-    Event,
-    EventMsg,
-    ExecCommandBeginEvent,
-    ExecCommandEndEvent,
-    ExecCommandOutputDeltaEvent,
-    ExecOutputStream,
-    OrderMeta,
-};
-use code_tui::test_helpers::{layout_metrics, render_chat_widget_to_vt100, ChatWidgetHarness};
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use code_core::protocol::AgentMessageDeltaEvent;
+use code_core::protocol::AgentMessageEvent;
+use code_core::protocol::AgentReasoningDeltaEvent;
+use code_core::protocol::AgentReasoningEvent;
+use code_core::protocol::BrowserSnapshotEvent;
+use code_core::protocol::Event;
+use code_core::protocol::EventMsg;
+use code_core::protocol::ExecCommandBeginEvent;
+use code_core::protocol::ExecCommandEndEvent;
+use code_core::protocol::ExecCommandOutputDeltaEvent;
+use code_core::protocol::ExecOutputStream;
+use code_core::protocol::OrderMeta;
+use code_tui::test_helpers::ChatWidgetHarness;
+use code_tui::test_helpers::layout_metrics;
+use code_tui::test_helpers::render_chat_widget_to_vt100;
+use crossterm::event::KeyCode;
+use crossterm::event::KeyEvent;
+use crossterm::event::KeyModifiers;
 use serde_bytes::ByteBuf;
 use serde_json::json;
 use std::path::PathBuf;
@@ -87,7 +89,11 @@ enum Scenario {
 #[ignore]
 #[test]
 fn scan_history_cutoff_regressions() {
-    let scenarios = [Scenario::Plain, Scenario::ReasoningExpanded, Scenario::ReasoningCollapsed];
+    let scenarios = [
+        Scenario::Plain,
+        Scenario::ReasoningExpanded,
+        Scenario::ReasoningCollapsed,
+    ];
 
     let viewports = [
         (60, 2u16),
@@ -167,7 +173,10 @@ fn plain_history_last_line_visible_80x12() {
         output.contains(PLAIN_SENTINEL),
         "plain transcript should keep the final sentinel visible"
     );
-    assert_eq!(metrics.scroll_offset, 0, "plain transcript should rest at bottom");
+    assert_eq!(
+        metrics.scroll_offset, 0,
+        "plain transcript should rest at bottom"
+    );
 }
 
 #[test]
@@ -220,7 +229,10 @@ fn streaming_history_growth_keeps_last_line() {
         output.contains(STREAM_SENTINEL),
         "streaming transcript should keep the last sentinel visible"
     );
-    assert_eq!(metrics.scroll_offset, 0, "streaming transcript should stay pinned to bottom");
+    assert_eq!(
+        metrics.scroll_offset, 0,
+        "streaming transcript should stay pinned to bottom"
+    );
 }
 
 #[test]

@@ -12,7 +12,9 @@ mod imp {
     pub struct OtelProvider;
 
     impl OtelProvider {
-        pub fn from(_settings: &crate::config::OtelSettings) -> Result<Option<Self>, Box<dyn Error>> {
+        pub fn from(
+            _settings: &crate::config::OtelSettings,
+        ) -> Result<Option<Self>, Box<dyn Error>> {
             Ok(None)
         }
 

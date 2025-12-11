@@ -8,44 +8,46 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use code_core::config_types::AutoResolveAttemptLimit;
-use code_core::history::state::{
-    AssistantStreamDelta,
-    HistoryId,
-    HistoryRecord,
-    HistoryState,
-    MessageMetadata,
-    PatchEventType,
-};
-use code_core::protocol::{
-    AgentMessageDeltaEvent,
-    AgentMessageEvent,
-    ApplyPatchApprovalRequestEvent,
-    CustomToolCallBeginEvent,
-    CustomToolCallEndEvent,
-    ExecApprovalRequestEvent,
-    ExecCommandBeginEvent,
-    ExecCommandEndEvent,
-    ExecCommandOutputDeltaEvent,
-    ExecOutputStream,
-    Event,
-    EventMsg,
-    FileChange,
-    McpInvocation,
-    McpToolCallBeginEvent,
-    McpToolCallEndEvent,
-    OrderMeta,
-    SessionConfiguredEvent,
-    TokenUsage,
-};
-use uuid::Uuid;
-use code_tui::test_helpers::{render_chat_widget_to_vt100, ChatWidgetHarness};
-use code_tui::{Cli, ComposerAction, ComposerInput};
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use code_core::history::state::AssistantStreamDelta;
+use code_core::history::state::HistoryId;
+use code_core::history::state::HistoryRecord;
+use code_core::history::state::HistoryState;
+use code_core::history::state::MessageMetadata;
+use code_core::history::state::PatchEventType;
+use code_core::protocol::AgentMessageDeltaEvent;
+use code_core::protocol::AgentMessageEvent;
+use code_core::protocol::ApplyPatchApprovalRequestEvent;
+use code_core::protocol::CustomToolCallBeginEvent;
+use code_core::protocol::CustomToolCallEndEvent;
+use code_core::protocol::Event;
+use code_core::protocol::EventMsg;
+use code_core::protocol::ExecApprovalRequestEvent;
+use code_core::protocol::ExecCommandBeginEvent;
+use code_core::protocol::ExecCommandEndEvent;
+use code_core::protocol::ExecCommandOutputDeltaEvent;
+use code_core::protocol::ExecOutputStream;
+use code_core::protocol::FileChange;
+use code_core::protocol::McpInvocation;
+use code_core::protocol::McpToolCallBeginEvent;
+use code_core::protocol::McpToolCallEndEvent;
+use code_core::protocol::OrderMeta;
+use code_core::protocol::SessionConfiguredEvent;
+use code_core::protocol::TokenUsage;
+use code_tui::Cli;
+use code_tui::ComposerAction;
+use code_tui::ComposerInput;
+use code_tui::test_helpers::ChatWidgetHarness;
+use code_tui::test_helpers::render_chat_widget_to_vt100;
+use crossterm::event::KeyCode;
+use crossterm::event::KeyEvent;
+use crossterm::event::KeyModifiers;
 use mcp_types::CallToolResult;
 use serde_bytes::ByteBuf;
 use serde_json::json;
 use std::path::PathBuf;
-use std::time::{Duration, SystemTime};
+use std::time::Duration;
+use std::time::SystemTime;
+use uuid::Uuid;
 fn make_key(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent {
     KeyEvent {
         code,
@@ -55,7 +57,11 @@ fn make_key(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent {
     }
 }
 
-fn make_key_with_kind(code: KeyCode, modifiers: KeyModifiers, kind: crossterm::event::KeyEventKind) -> KeyEvent {
+fn make_key_with_kind(
+    code: KeyCode,
+    modifiers: KeyModifiers,
+    kind: crossterm::event::KeyEventKind,
+) -> KeyEvent {
     KeyEvent {
         code,
         modifiers,
@@ -93,7 +99,10 @@ fn cli_web_search_flag_defaults() {
     };
 
     cli.finalize_defaults();
-    assert!(cli.web_search, "web_search should default to true when no flags are set");
+    assert!(
+        cli.web_search,
+        "web_search should default to true when no flags are set"
+    );
 }
 
 #[test]
@@ -125,7 +134,10 @@ fn cli_web_search_flag_explicit_enable() {
     };
 
     cli.finalize_defaults();
-    assert!(cli.web_search, "web_search should be true when enable_web_search is set");
+    assert!(
+        cli.web_search,
+        "web_search should be true when enable_web_search is set"
+    );
 }
 
 #[test]
@@ -157,7 +169,10 @@ fn cli_web_search_flag_disable() {
     };
 
     cli.finalize_defaults();
-    assert!(!cli.web_search, "web_search should be false when disable_web_search is set");
+    assert!(
+        !cli.web_search,
+        "web_search should be false when disable_web_search is set"
+    );
 }
 
 #[test]
@@ -172,7 +187,10 @@ fn composer_input_paste_and_submit() {
     assert!(handled, "paste should be handled");
 
     // Verify the composer is no longer empty
-    assert!(!composer.is_empty(), "ComposerInput should contain pasted text");
+    assert!(
+        !composer.is_empty(),
+        "ComposerInput should contain pasted text"
+    );
 
     // Simulate pressing Enter to submit
     let enter_key = make_key(KeyCode::Enter, KeyModifiers::NONE);
@@ -187,7 +205,10 @@ fn composer_input_paste_and_submit() {
     }
 
     // After submission, the composer should be empty
-    assert!(composer.is_empty(), "ComposerInput should be empty after submission");
+    assert!(
+        composer.is_empty(),
+        "ComposerInput should be empty after submission"
+    );
 }
 
 #[test]
@@ -235,21 +256,53 @@ fn composer_input_fast_multiline_key_stream_does_not_submit_lines() {
     let events = [
         // Press+Release pairs to mirror enhanced keyboard reporting
         make_key(KeyCode::Char('l'), KeyModifiers::NONE),
-        make_key_with_kind(KeyCode::Char('l'), KeyModifiers::NONE, crossterm::event::KeyEventKind::Release),
+        make_key_with_kind(
+            KeyCode::Char('l'),
+            KeyModifiers::NONE,
+            crossterm::event::KeyEventKind::Release,
+        ),
         make_key(KeyCode::Char('s'), KeyModifiers::NONE),
-        make_key_with_kind(KeyCode::Char('s'), KeyModifiers::NONE, crossterm::event::KeyEventKind::Release),
+        make_key_with_kind(
+            KeyCode::Char('s'),
+            KeyModifiers::NONE,
+            crossterm::event::KeyEventKind::Release,
+        ),
         make_key(KeyCode::Char(' '), KeyModifiers::NONE),
-        make_key_with_kind(KeyCode::Char(' '), KeyModifiers::NONE, crossterm::event::KeyEventKind::Release),
+        make_key_with_kind(
+            KeyCode::Char(' '),
+            KeyModifiers::NONE,
+            crossterm::event::KeyEventKind::Release,
+        ),
         make_key(KeyCode::Char('-'), KeyModifiers::NONE),
-        make_key_with_kind(KeyCode::Char('-'), KeyModifiers::NONE, crossterm::event::KeyEventKind::Release),
+        make_key_with_kind(
+            KeyCode::Char('-'),
+            KeyModifiers::NONE,
+            crossterm::event::KeyEventKind::Release,
+        ),
         make_key(KeyCode::Char('l'), KeyModifiers::NONE),
-        make_key_with_kind(KeyCode::Char('l'), KeyModifiers::NONE, crossterm::event::KeyEventKind::Release),
+        make_key_with_kind(
+            KeyCode::Char('l'),
+            KeyModifiers::NONE,
+            crossterm::event::KeyEventKind::Release,
+        ),
         make_key(KeyCode::Enter, KeyModifiers::NONE),
-        make_key_with_kind(KeyCode::Enter, KeyModifiers::NONE, crossterm::event::KeyEventKind::Release),
+        make_key_with_kind(
+            KeyCode::Enter,
+            KeyModifiers::NONE,
+            crossterm::event::KeyEventKind::Release,
+        ),
         make_key(KeyCode::Char('a'), KeyModifiers::NONE),
-        make_key_with_kind(KeyCode::Char('a'), KeyModifiers::NONE, crossterm::event::KeyEventKind::Release),
+        make_key_with_kind(
+            KeyCode::Char('a'),
+            KeyModifiers::NONE,
+            crossterm::event::KeyEventKind::Release,
+        ),
         make_key(KeyCode::Char('b'), KeyModifiers::NONE),
-        make_key_with_kind(KeyCode::Char('b'), KeyModifiers::NONE, crossterm::event::KeyEventKind::Release),
+        make_key_with_kind(
+            KeyCode::Char('b'),
+            KeyModifiers::NONE,
+            crossterm::event::KeyEventKind::Release,
+        ),
     ];
 
     for event in events {
@@ -269,11 +322,23 @@ fn composer_input_short_line_multiline_key_stream_does_not_submit() {
 
     let events = [
         make_key(KeyCode::Char('a'), KeyModifiers::NONE),
-        make_key_with_kind(KeyCode::Char('a'), KeyModifiers::NONE, crossterm::event::KeyEventKind::Release),
+        make_key_with_kind(
+            KeyCode::Char('a'),
+            KeyModifiers::NONE,
+            crossterm::event::KeyEventKind::Release,
+        ),
         make_key(KeyCode::Enter, KeyModifiers::NONE),
-        make_key_with_kind(KeyCode::Enter, KeyModifiers::NONE, crossterm::event::KeyEventKind::Release),
+        make_key_with_kind(
+            KeyCode::Enter,
+            KeyModifiers::NONE,
+            crossterm::event::KeyEventKind::Release,
+        ),
         make_key(KeyCode::Char('b'), KeyModifiers::NONE),
-        make_key_with_kind(KeyCode::Char('b'), KeyModifiers::NONE, crossterm::event::KeyEventKind::Release),
+        make_key_with_kind(
+            KeyCode::Char('b'),
+            KeyModifiers::NONE,
+            crossterm::event::KeyEventKind::Release,
+        ),
     ];
 
     for event in events {
@@ -292,15 +357,35 @@ fn composer_input_tabbed_multiline_key_stream_does_not_submit() {
 
     let events = [
         make_key(KeyCode::Char('a'), KeyModifiers::NONE),
-        make_key_with_kind(KeyCode::Char('a'), KeyModifiers::NONE, crossterm::event::KeyEventKind::Release),
+        make_key_with_kind(
+            KeyCode::Char('a'),
+            KeyModifiers::NONE,
+            crossterm::event::KeyEventKind::Release,
+        ),
         make_key(KeyCode::Tab, KeyModifiers::NONE),
-        make_key_with_kind(KeyCode::Tab, KeyModifiers::NONE, crossterm::event::KeyEventKind::Release),
+        make_key_with_kind(
+            KeyCode::Tab,
+            KeyModifiers::NONE,
+            crossterm::event::KeyEventKind::Release,
+        ),
         make_key(KeyCode::Char('b'), KeyModifiers::NONE),
-        make_key_with_kind(KeyCode::Char('b'), KeyModifiers::NONE, crossterm::event::KeyEventKind::Release),
+        make_key_with_kind(
+            KeyCode::Char('b'),
+            KeyModifiers::NONE,
+            crossterm::event::KeyEventKind::Release,
+        ),
         make_key(KeyCode::Enter, KeyModifiers::NONE),
-        make_key_with_kind(KeyCode::Enter, KeyModifiers::NONE, crossterm::event::KeyEventKind::Release),
+        make_key_with_kind(
+            KeyCode::Enter,
+            KeyModifiers::NONE,
+            crossterm::event::KeyEventKind::Release,
+        ),
         make_key(KeyCode::Char('c'), KeyModifiers::NONE),
-        make_key_with_kind(KeyCode::Char('c'), KeyModifiers::NONE, crossterm::event::KeyEventKind::Release),
+        make_key_with_kind(
+            KeyCode::Char('c'),
+            KeyModifiers::NONE,
+            crossterm::event::KeyEventKind::Release,
+        ),
     ];
 
     for event in events {
@@ -321,7 +406,10 @@ fn composer_input_backslash_continuation_inserts_newline() {
     match composer.input(enter) {
         ComposerAction::None => {
             assert_eq!(composer.text(), "Hello\n");
-            assert!(!composer.is_empty(), "composer should retain text after continuation");
+            assert!(
+                !composer.is_empty(),
+                "composer should retain text after continuation"
+            );
         }
         ComposerAction::Submitted(_) => panic!("continuation should not submit"),
     }
@@ -335,7 +423,10 @@ fn composer_input_backslash_continuation_trailing_space_submits() {
     match composer.input(make_key(KeyCode::Enter, KeyModifiers::NONE)) {
         ComposerAction::Submitted(text) => {
             assert_eq!(text, "Hello\\ ");
-            assert!(composer.is_empty(), "composer should clear after submission");
+            assert!(
+                composer.is_empty(),
+                "composer should clear after submission"
+            );
         }
         ComposerAction::None => panic!("trailing space should cancel continuation"),
     }
@@ -463,7 +554,8 @@ fn smoke_exec_approval_event_structure() {
     };
 
     let encoded = serde_json::to_string(&approval).expect("serialize exec approval");
-    let decoded: ExecApprovalRequestEvent = serde_json::from_str(&encoded).expect("deserialize exec approval");
+    let decoded: ExecApprovalRequestEvent =
+        serde_json::from_str(&encoded).expect("deserialize exec approval");
 
     assert_eq!(decoded.command.len(), 2);
     assert_eq!(decoded.reason.as_deref(), Some("verify"));
@@ -518,7 +610,8 @@ fn smoke_mcp_tool_call_event_structure() {
     };
 
     let encoded = serde_json::to_string(&end).expect("serialize tool call");
-    let decoded: CustomToolCallEndEvent = serde_json::from_str(&encoded).expect("deserialize tool call");
+    let decoded: CustomToolCallEndEvent =
+        serde_json::from_str(&encoded).expect("deserialize tool call");
 
     assert_eq!(decoded.tool_name, "browser_navigate");
     assert_eq!(decoded.duration, Duration::from_millis(120));
@@ -536,7 +629,8 @@ fn assistant_stream_creates_new_record() {
     };
 
     let stream_id = "stream-1";
-    let record_id = state.upsert_assistant_stream_state(stream_id, "Hello".into(), Some(delta.clone()), None);
+    let record_id =
+        state.upsert_assistant_stream_state(stream_id, "Hello".into(), Some(delta.clone()), None);
 
     assert_ne!(record_id, HistoryId::ZERO);
     match state.records.last() {
@@ -682,12 +776,18 @@ fn smoke_exec_command_stream() {
     let exec_record = records
         .into_iter()
         .find_map(|record| match record {
-            HistoryRecord::Exec(record) if record.call_id.as_deref() == Some(&call_id) => Some(record),
+            HistoryRecord::Exec(record) if record.call_id.as_deref() == Some(&call_id) => {
+                Some(record)
+            }
             _ => None,
         })
         .expect("exec record present");
 
-    assert_eq!(exec_record.exit_code, Some(0), "exec exit code should be success");
+    assert_eq!(
+        exec_record.exit_code,
+        Some(0),
+        "exec exit code should be success"
+    );
     let stdout = exec_record
         .stdout_chunks
         .iter()
@@ -742,7 +842,10 @@ fn smoke_approval_flow() {
         .expect("change for sample.txt present");
     match change {
         FileChange::Add { content } => {
-            assert_eq!(content, "Hello world", "patch change should include file contents");
+            assert_eq!(
+                content, "Hello world",
+                "patch change should include file contents"
+            );
         }
         other => panic!("expected FileChange::Add, got {other:?}"),
     }

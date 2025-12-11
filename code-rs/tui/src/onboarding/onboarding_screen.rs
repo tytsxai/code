@@ -1,8 +1,10 @@
-use ratatui::buffer::Buffer;
-use ratatui::layout::Rect;
-use ratatui::widgets::{Clear, Widget, WidgetRef};
 use code_core::git_info::get_git_repo_root;
 use crossterm::event::KeyEvent;
+use ratatui::buffer::Buffer;
+use ratatui::layout::Rect;
+use ratatui::widgets::Clear;
+use ratatui::widgets::Widget;
+use ratatui::widgets::WidgetRef;
 
 use code_login::AuthMode;
 

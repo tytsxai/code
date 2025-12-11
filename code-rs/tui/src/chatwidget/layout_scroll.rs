@@ -20,14 +20,18 @@ pub(super) fn page_up(chat: &mut ChatWidget<'_>) {
     let before = chat.layout.scroll_offset;
     let step = chat.layout.last_history_viewport_height.get().max(1);
     let new_offset = chat
-        .layout.scroll_offset
+        .layout
+        .scroll_offset
         .saturating_add(step)
         .min(chat.layout.last_max_scroll.get());
     chat.layout.scroll_offset = new_offset;
     chat.bottom_pane.set_compact_compose(true);
     flash_scrollbar(chat);
-    chat.app_event_tx.send(crate::app_event::AppEvent::RequestRedraw);
-    chat.height_manager.borrow_mut().record_event(crate::height_manager::HeightEvent::UserScroll);
+    chat.app_event_tx
+        .send(crate::app_event::AppEvent::RequestRedraw);
+    chat.height_manager
+        .borrow_mut()
+        .record_event(crate::height_manager::HeightEvent::UserScroll);
     chat.maybe_show_history_nav_hint_on_first_scroll();
     chat.perf_track_scroll_delta(before, chat.layout.scroll_offset);
 }
@@ -35,18 +39,15 @@ pub(super) fn page_up(chat: &mut ChatWidget<'_>) {
 pub(super) fn line_up(chat: &mut ChatWidget<'_>) {
     let before = chat.layout.scroll_offset;
     let max_scroll = chat.layout.last_max_scroll.get();
-    let new_offset = chat
-        .layout
-        .scroll_offset
-        .saturating_add(1)
-        .min(max_scroll);
+    let new_offset = chat.layout.scroll_offset.saturating_add(1).min(max_scroll);
     if new_offset == chat.layout.scroll_offset {
         return;
     }
     chat.layout.scroll_offset = new_offset;
     chat.bottom_pane.set_compact_compose(true);
     flash_scrollbar(chat);
-    chat.app_event_tx.send(crate::app_event::AppEvent::RequestRedraw);
+    chat.app_event_tx
+        .send(crate::app_event::AppEvent::RequestRedraw);
     chat.height_manager
         .borrow_mut()
         .record_event(HeightEvent::UserScroll);
@@ -66,7 +67,8 @@ pub(super) fn line_down(chat: &mut ChatWidget<'_>) {
         chat.bottom_pane.set_compact_compose(false);
     }
     flash_scrollbar(chat);
-    chat.app_event_tx.send(crate::app_event::AppEvent::RequestRedraw);
+    chat.app_event_tx
+        .send(crate::app_event::AppEvent::RequestRedraw);
     chat.height_manager
         .borrow_mut()
         .record_event(HeightEvent::UserScroll);
@@ -84,8 +86,11 @@ pub(super) fn page_down(chat: &mut ChatWidget<'_>) {
         chat.bottom_pane.set_compact_compose(false);
     }
     flash_scrollbar(chat);
-    chat.app_event_tx.send(crate::app_event::AppEvent::RequestRedraw);
-    chat.height_manager.borrow_mut().record_event(crate::height_manager::HeightEvent::UserScroll);
+    chat.app_event_tx
+        .send(crate::app_event::AppEvent::RequestRedraw);
+    chat.height_manager
+        .borrow_mut()
+        .record_event(crate::height_manager::HeightEvent::UserScroll);
     chat.maybe_show_history_nav_hint_on_first_scroll();
     chat.perf_track_scroll_delta(before, chat.layout.scroll_offset);
 }
@@ -94,7 +99,8 @@ pub(super) fn mouse_scroll(chat: &mut ChatWidget<'_>, up: bool) {
     let before = chat.layout.scroll_offset;
     if up {
         let new_offset = chat
-            .layout.scroll_offset
+            .layout
+            .scroll_offset
             .saturating_add(3)
             .min(chat.layout.last_max_scroll.get());
         chat.layout.scroll_offset = new_offset;
@@ -102,16 +108,19 @@ pub(super) fn mouse_scroll(chat: &mut ChatWidget<'_>, up: bool) {
         if chat.layout.scroll_offset > 0 {
             chat.bottom_pane.set_compact_compose(true);
         }
-        chat.app_event_tx.send(crate::app_event::AppEvent::RequestRedraw);
+        chat.app_event_tx
+            .send(crate::app_event::AppEvent::RequestRedraw);
         chat.maybe_show_history_nav_hint_on_first_scroll();
     } else {
         if chat.layout.scroll_offset >= 3 {
             chat.layout.scroll_offset = chat.layout.scroll_offset.saturating_sub(3);
-            chat.app_event_tx.send(crate::app_event::AppEvent::RequestRedraw);
+            chat.app_event_tx
+                .send(crate::app_event::AppEvent::RequestRedraw);
             chat.maybe_show_history_nav_hint_on_first_scroll();
         } else if chat.layout.scroll_offset > 0 {
             chat.layout.scroll_offset = 0;
-            chat.app_event_tx.send(crate::app_event::AppEvent::RequestRedraw);
+            chat.app_event_tx
+                .send(crate::app_event::AppEvent::RequestRedraw);
             chat.maybe_show_history_nav_hint_on_first_scroll();
         }
         flash_scrollbar(chat);
@@ -123,7 +132,8 @@ pub(super) fn mouse_scroll(chat: &mut ChatWidget<'_>, up: bool) {
 }
 
 pub(super) fn flash_scrollbar(chat: &ChatWidget<'_>) {
-    use std::time::{Duration, Instant};
+    use std::time::Duration;
+    use std::time::Instant;
     let until = Instant::now() + Duration::from_millis(1200);
     chat.layout.scrollbar_visible_until.set(Some(until));
     let tx = chat.app_event_tx.clone();

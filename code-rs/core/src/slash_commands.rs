@@ -202,7 +202,11 @@ pub fn format_cleanup_command(args: &str) -> String {
                 }
             }
             _ if token.starts_with("--keep=") => {
-                if let Some(value) = token.split('=').nth(1).and_then(|v| v.parse::<usize>().ok()) {
+                if let Some(value) = token
+                    .split('=')
+                    .nth(1)
+                    .and_then(|v| v.parse::<usize>().ok())
+                {
                     keep_count = value;
                 }
             }
@@ -305,9 +309,7 @@ pub fn handle_slash_command(input: &str, agents: Option<&[AgentConfig]>) -> Opti
                 Some(format_code_command(&args, None, agents))
             }
         }
-        "/cleanup" => {
-            Some(format_cleanup_command(&args))
-        }
+        "/cleanup" => Some(format_cleanup_command(&args)),
         _ => None,
     }
 }

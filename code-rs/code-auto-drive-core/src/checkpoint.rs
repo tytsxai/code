@@ -7,9 +7,12 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use anyhow::Result;
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
+use chrono::DateTime;
+use chrono::Utc;
+use serde::Deserialize;
+use serde::Serialize;
+use sha2::Digest;
+use sha2::Sha256;
 
 use code_protocol::models::ResponseItem;
 
@@ -189,18 +192,17 @@ impl CheckpointManager {
             let entry = entry?;
             let path = entry.path();
 
-            if path.extension().is_some_and(|ext| ext == "json") {
-                if let Ok(json) = std::fs::read_to_string(&path) {
-                    if let Ok(checkpoint) = serde_json::from_str::<AutoDriveCheckpoint>(&json) {
-                        summaries.push(CheckpointSummary {
-                            session_id: checkpoint.session_id,
-                            goal_preview: checkpoint.goal.chars().take(100).collect(),
-                            turns_completed: checkpoint.turns_completed,
-                            created_at: checkpoint.created_at,
-                            updated_at: checkpoint.updated_at,
-                        });
-                    }
-                }
+            if path.extension().is_some_and(|ext| ext == "json")
+                && let Ok(json) = std::fs::read_to_string(&path)
+                && let Ok(checkpoint) = serde_json::from_str::<AutoDriveCheckpoint>(&json)
+            {
+                summaries.push(CheckpointSummary {
+                    session_id: checkpoint.session_id,
+                    goal_preview: checkpoint.goal.chars().take(100).collect(),
+                    turns_completed: checkpoint.turns_completed,
+                    created_at: checkpoint.created_at,
+                    updated_at: checkpoint.updated_at,
+                });
             }
         }
 
@@ -223,15 +225,13 @@ impl CheckpointManager {
             let entry = entry?;
             let path = entry.path();
 
-            if path.extension().is_some_and(|ext| ext == "json") {
-                if let Ok(json) = std::fs::read_to_string(&path) {
-                    if let Ok(checkpoint) = serde_json::from_str::<AutoDriveCheckpoint>(&json) {
-                        if checkpoint.updated_at < cutoff {
-                            std::fs::remove_file(&path)?;
-                            removed += 1;
-                        }
-                    }
-                }
+            if path.extension().is_some_and(|ext| ext == "json")
+                && let Ok(json) = std::fs::read_to_string(&path)
+                && let Ok(checkpoint) = serde_json::from_str::<AutoDriveCheckpoint>(&json)
+                && checkpoint.updated_at < cutoff
+            {
+                std::fs::remove_file(&path)?;
+                removed += 1;
             }
         }
 
@@ -318,7 +318,7 @@ mod tests {
         assert!(manager.validate(&checkpoint).unwrap());
 
         // Tamper with checkpoint
-        let mut tampered = checkpoint.clone();
+        let mut tampered = checkpoint;
         tampered.goal = "Modified goal".to_string();
 
         assert!(!manager.validate(&tampered).unwrap());

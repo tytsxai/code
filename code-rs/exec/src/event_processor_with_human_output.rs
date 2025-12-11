@@ -21,11 +21,11 @@ use code_core::protocol::PatchApplyBeginEvent;
 use code_core::protocol::PatchApplyEndEvent;
 use code_core::protocol::SessionConfiguredEvent;
 use code_core::protocol::TaskCompleteEvent;
-use code_protocol::protocol::TurnAbortReason;
 use code_core::protocol::TurnDiffEvent;
 use code_core::protocol::WebSearchBeginEvent;
 use code_core::protocol::WebSearchCompleteEvent;
 use code_protocol::num_format::format_with_separators;
+use code_protocol::protocol::TurnAbortReason;
 use owo_colors::OwoColorize;
 use owo_colors::Style;
 use shlex::try_join;
@@ -122,7 +122,6 @@ impl EventProcessorWithHumanOutput {
             }
         }
     }
-
 }
 
 struct ExecCommandBegin {
@@ -309,7 +308,13 @@ impl EventProcessor for EventProcessorWithHumanOutput {
                 );
             }
             EventMsg::ExecCommandOutputDelta(_) => {}
-            EventMsg::ExecCommandEnd(ExecCommandEndEvent { call_id, stdout, stderr, duration, exit_code }) => {
+            EventMsg::ExecCommandEnd(ExecCommandEndEvent {
+                call_id,
+                stdout,
+                stderr,
+                duration,
+                exit_code,
+            }) => {
                 let exec_command = self.call_id_to_command.remove(&call_id);
                 let (duration, call) = if let Some(ExecCommandBegin { command, .. }) = exec_command
                 {
@@ -541,7 +546,11 @@ impl EventProcessor for EventProcessorWithHumanOutput {
                 }
             }
             EventMsg::SessionConfigured(session_configured_event) => {
-                let SessionConfiguredEvent { session_id: conversation_id, model, .. } = session_configured_event;
+                let SessionConfiguredEvent {
+                    session_id: conversation_id,
+                    model,
+                    ..
+                } = session_configured_event;
 
                 ts_println!(
                     self,

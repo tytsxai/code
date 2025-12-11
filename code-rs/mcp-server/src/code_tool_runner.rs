@@ -33,7 +33,8 @@ use crate::outgoing_message::OutgoingMessageSender;
 use crate::outgoing_message::OutgoingMessageSenderExt;
 use crate::outgoing_message::OutgoingNotificationMeta;
 use crate::patch_approval::handle_patch_approval_request;
-use crate::session_store::{SessionEntry, SessionMap};
+use crate::session_store::SessionEntry;
+use crate::session_store::SessionMap;
 
 pub(crate) const INVALID_PARAMS_ERROR_CODE: i64 = -32602;
 
@@ -44,7 +45,9 @@ async fn cleanup_session(
 ) {
     session_map.lock().await.remove(&session_id);
     let conversation_id = ConversationId::from(session_id);
-    conversation_manager.remove_conversation(&conversation_id).await;
+    conversation_manager
+        .remove_conversation(&conversation_id)
+        .await;
 }
 
 /// Run a complete Codex session and stream events back to the client.

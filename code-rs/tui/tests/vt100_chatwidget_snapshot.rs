@@ -7,47 +7,50 @@
 #![cfg(test)]
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use code_core::protocol::{
-    AgentInfo,
-    AgentMessageDeltaEvent,
-    AgentMessageEvent,
-    AgentStatusUpdateEvent,
-    BackgroundEventEvent,
-    BrowserSnapshotEvent,
-    BrowserScreenshotUpdateEvent,
-    EnvironmentContextDeltaEvent,
-    EnvironmentContextFullEvent,
-    CustomToolCallBeginEvent,
-    CustomToolCallEndEvent,
-    Event,
-    EventMsg,
-    OrderMeta,
-    WebSearchBeginEvent,
-    WebSearchCompleteEvent,
-};
-use code_tui::test_helpers::{
-    force_scroll_offset as harness_force_scroll_offset,
-    layout_metrics as harness_layout_metrics,
-    render_chat_widget_to_vt100,
-    AutoContinueModeFixture,
-    ChatWidgetHarness,
-};
 use code_core::codex::compact::COMPACTION_CHECKPOINT_MESSAGE;
+use code_core::protocol::AgentInfo;
+use code_core::protocol::AgentMessageDeltaEvent;
+use code_core::protocol::AgentMessageEvent;
+use code_core::protocol::AgentStatusUpdateEvent;
+use code_core::protocol::BackgroundEventEvent;
+use code_core::protocol::BrowserScreenshotUpdateEvent;
+use code_core::protocol::BrowserSnapshotEvent;
+use code_core::protocol::CustomToolCallBeginEvent;
+use code_core::protocol::CustomToolCallEndEvent;
+use code_core::protocol::EnvironmentContextDeltaEvent;
+use code_core::protocol::EnvironmentContextFullEvent;
+use code_core::protocol::Event;
+use code_core::protocol::EventMsg;
+use code_core::protocol::OrderMeta;
+use code_core::protocol::WebSearchBeginEvent;
+use code_core::protocol::WebSearchCompleteEvent;
 use code_protocol::protocol::CompactionCheckpointWarningEvent;
-use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers};
-use regex_lite::{Captures, Regex};
-use serde_json::json;
-use std::path::{Path, PathBuf};
-use std::sync::{Mutex, OnceLock};
-use std::time::Duration;
+use code_tui::test_helpers::AutoContinueModeFixture;
+use code_tui::test_helpers::ChatWidgetHarness;
+use code_tui::test_helpers::force_scroll_offset as harness_force_scroll_offset;
+use code_tui::test_helpers::layout_metrics as harness_layout_metrics;
+use code_tui::test_helpers::render_chat_widget_to_vt100;
+use crossterm::event::KeyCode;
+use crossterm::event::KeyEvent;
+use crossterm::event::KeyEventKind;
+use crossterm::event::KeyEventState;
+use crossterm::event::KeyModifiers;
 use once_cell::sync::Lazy;
+use regex_lite::Captures;
+use regex_lite::Regex;
+use serde_json::json;
+use std::path::Path;
+use std::path::PathBuf;
+use std::sync::Mutex;
 use std::sync::Once;
-use tracing_subscriber::{self, EnvFilter};
+use std::sync::OnceLock;
+use std::time::Duration;
 use tempfile::TempDir;
+use tracing_subscriber::EnvFilter;
+use tracing_subscriber::{self};
 
 fn normalize_output(text: String) -> String {
-    text
-        .chars()
+    text.chars()
         .map(normalize_glyph)
         .collect::<String>()
         .pipe(normalize_ellipsis)
@@ -150,27 +153,21 @@ fn normalize_glyph(ch: char) -> char {
         // Decorative sparkles → single sentinel to keep intent without variation.
         '✧' | '◇' | '✦' | '◆' | '✨' => '✶',
         // Box-drawing corners → '+' for ASCII snapshots.
-        '┌' | '┐' | '└' | '┘'
-        | '┏' | '┓' | '┗' | '┛'
-        | '╔' | '╗' | '╚' | '╝'
-        | '╒' | '╕' | '╛' | '╜'
-        | '╓' | '╖' | '╙' | '╘'
-        | '╭' | '╮' | '╯' | '╰' => '+',
+        '┌' | '┐' | '└' | '┘' | '┏' | '┓' | '┗' | '┛' | '╔' | '╗' | '╚' | '╝' | '╒' | '╕' | '╛'
+        | '╜' | '╓' | '╖' | '╙' | '╘' | '╭' | '╮' | '╯' | '╰' => '+',
         // Tee / cross junctions also collapse to '+' to keep structure recognizable.
-        '┬' | '┴' | '┼' | '├' | '┤'
-        | '┽' | '┾' | '┿'
-        | '╀' | '╁' | '╂' | '╃' | '╄'
-        | '╅' | '╆' | '╇' | '╈' | '╉'
-        | '╊' | '╋' | '╟' | '╠' | '╡'
-        | '╢' | '╫' | '╪' | '╬' => '+',
+        '┬' | '┴' | '┼' | '├' | '┤' | '┽' | '┾' | '┿' | '╀' | '╁' | '╂' | '╃' | '╄' | '╅' | '╆'
+        | '╇' | '╈' | '╉' | '╊' | '╋' | '╟' | '╠' | '╡' | '╢' | '╫' | '╪' | '╬' => {
+            '+'
+        }
         // Horizontal box drawing and variants → '-'.
-        '─' | '━' | '═' | '╼' | '╾'
-        | '╸' | '╺' | '╴' | '╶'
-        | '┄' | '┅' | '┈' | '┉' => '-',
+        '─' | '━' | '═' | '╼' | '╾' | '╸' | '╺' | '╴' | '╶' | '┄' | '┅' | '┈' | '┉' => {
+            '-'
+        }
         // Vertical box drawing variants → '|'.
-        '│' | '┃' | '║' | '╽' | '╿'
-        | '╏' | '╎' | '┆' | '┇'
-        | '╷' | '╹' => '|',
+        '│' | '┃' | '║' | '╽' | '╿' | '╏' | '╎' | '┆' | '┇' | '╷' | '╹' => {
+            '|'
+        }
         // Diagonal strokes → ASCII approximations.
         '╱' => '/',
         '╲' => '/',
@@ -243,7 +240,9 @@ fn normalize_timers(text: String) -> String {
         .into_owned();
 
     let text = PAREN_HOURS_MINUTES_SECONDS_RE
-        .get_or_init(|| Regex::new(r"\(\d+h\s+\d+m\s+\d+s\)").expect("valid paren hours minutes seconds regex"))
+        .get_or_init(|| {
+            Regex::new(r"\(\d+h\s+\d+m\s+\d+s\)").expect("valid paren hours minutes seconds regex")
+        })
         .replace_all(&text, "(Xh Xm Xs)")
         .into_owned();
 
@@ -282,7 +281,9 @@ fn normalize_auto_drive_layout(text: String) -> String {
         .replace_all(&text, |caps: &Captures| {
             let indent = &caps["indent"];
             let title = caps["title"].trim();
-            format!("{indent}+----------------------------- ✶ {title} -----------------------------+")
+            format!(
+                "{indent}+----------------------------- ✶ {title} -----------------------------+"
+            )
         })
         .into_owned()
 }
@@ -464,11 +465,7 @@ fn push_ordered_event(
     *order_seq = ord.saturating_add(1);
 }
 
-fn push_unordered_event(
-    harness: &mut ChatWidgetHarness,
-    event_seq: &mut u64,
-    msg: EventMsg,
-) {
+fn push_unordered_event(harness: &mut ChatWidgetHarness, event_seq: &mut u64, msg: EventMsg) {
     let seq = *event_seq;
     harness.handle_event(Event {
         id: format!("unordered-{seq}"),
@@ -764,13 +761,25 @@ fn auto_drive_continue_mode_transitions() {
     harness.auto_drive_override_countdown(9);
 
     let mut frames = Vec::new();
-    frames.push(normalize_output(render_chat_widget_to_vt100(&mut harness, 80, 18)));
+    frames.push(normalize_output(render_chat_widget_to_vt100(
+        &mut harness,
+        80,
+        18,
+    )));
 
     harness.auto_drive_set_continue_mode(AutoContinueModeFixture::Manual);
-    frames.push(normalize_output(render_chat_widget_to_vt100(&mut harness, 80, 18)));
+    frames.push(normalize_output(render_chat_widget_to_vt100(
+        &mut harness,
+        80,
+        18,
+    )));
 
     harness.auto_drive_set_continue_mode(AutoContinueModeFixture::Immediate);
-    frames.push(normalize_output(render_chat_widget_to_vt100(&mut harness, 80, 18)));
+    frames.push(normalize_output(render_chat_widget_to_vt100(
+        &mut harness,
+        80,
+        18,
+    )));
 
     insta::assert_snapshot!(
         "auto_drive_continue_mode_transitions",
@@ -795,7 +804,11 @@ fn auto_drive_action_transitions() {
     );
 
     let mut frames = Vec::new();
-    frames.push(normalize_output(render_chat_widget_to_vt100(&mut harness, 80, 18)));
+    frames.push(normalize_output(render_chat_widget_to_vt100(
+        &mut harness,
+        80,
+        18,
+    )));
 
     harness.auto_drive_set_awaiting_submission(
         "cargo test --workspace",
@@ -803,19 +816,31 @@ fn auto_drive_action_transitions() {
         Some("Suggested step: confirm tests before resuming.".to_string()),
     );
     harness.auto_drive_override_countdown(6);
-    frames.push(normalize_output(render_chat_widget_to_vt100(&mut harness, 80, 18)));
+    frames.push(normalize_output(render_chat_widget_to_vt100(
+        &mut harness,
+        80,
+        18,
+    )));
 
     harness.auto_drive_set_waiting_for_review(Some(
         "Waiting for code review to complete.".to_string(),
     ));
-    frames.push(normalize_output(render_chat_widget_to_vt100(&mut harness, 80, 18)));
+    frames.push(normalize_output(render_chat_widget_to_vt100(
+        &mut harness,
+        80,
+        18,
+    )));
 
     harness.auto_drive_set_waiting_for_response(
         "Resuming automated investigation",
         Some("Queued new command for execution.".to_string()),
         None,
     );
-    frames.push(normalize_output(render_chat_widget_to_vt100(&mut harness, 80, 18)));
+    frames.push(normalize_output(render_chat_widget_to_vt100(
+        &mut harness,
+        80,
+        18,
+    )));
 
     insta::assert_snapshot!(
         "auto_drive_action_transitions",
@@ -845,13 +870,25 @@ fn auto_drive_cli_progress_header() {
     );
 
     let mut frames = Vec::new();
-    frames.push(normalize_output(render_chat_widget_to_vt100(&mut harness, 80, 12)));
+    frames.push(normalize_output(render_chat_widget_to_vt100(
+        &mut harness,
+        80,
+        12,
+    )));
 
     harness.auto_drive_simulate_cli_submission();
-    frames.push(normalize_output(render_chat_widget_to_vt100(&mut harness, 80, 12)));
+    frames.push(normalize_output(render_chat_widget_to_vt100(
+        &mut harness,
+        80,
+        12,
+    )));
 
     harness.auto_drive_mark_cli_running();
-    frames.push(normalize_output(render_chat_widget_to_vt100(&mut harness, 80, 12)));
+    frames.push(normalize_output(render_chat_widget_to_vt100(
+        &mut harness,
+        80,
+        12,
+    )));
 
     insta::assert_snapshot!(
         "auto_drive_cli_progress_header",
@@ -877,10 +914,18 @@ fn auto_drive_countdown_auto_submit() {
     harness.auto_drive_override_countdown(3);
 
     let mut frames = Vec::new();
-    frames.push(normalize_output(render_chat_widget_to_vt100(&mut harness, 80, 18)));
+    frames.push(normalize_output(render_chat_widget_to_vt100(
+        &mut harness,
+        80,
+        18,
+    )));
 
     harness.auto_drive_advance_countdown(1);
-    frames.push(normalize_output(render_chat_widget_to_vt100(&mut harness, 80, 18)));
+    frames.push(normalize_output(render_chat_widget_to_vt100(
+        &mut harness,
+        80,
+        18,
+    )));
 
     harness.auto_drive_advance_countdown(0);
     harness.auto_drive_set_waiting_for_response(
@@ -888,7 +933,11 @@ fn auto_drive_countdown_auto_submit() {
         Some("Running cargo fmt --check.".to_string()),
         None,
     );
-    frames.push(normalize_output(render_chat_widget_to_vt100(&mut harness, 80, 18)));
+    frames.push(normalize_output(render_chat_widget_to_vt100(
+        &mut harness,
+        80,
+        18,
+    )));
 
     insta::assert_snapshot!(
         "auto_drive_countdown_auto_submit",
@@ -947,19 +996,25 @@ fn auto_drive_review_resume_returns_to_running() {
         true,
         AutoContinueModeFixture::TenSeconds,
     );
-    harness.auto_drive_set_waiting_for_review(Some(
-        "Waiting for reviewer feedback.".to_string(),
-    ));
+    harness.auto_drive_set_waiting_for_review(Some("Waiting for reviewer feedback.".to_string()));
 
     let mut frames = Vec::new();
-    frames.push(normalize_output(render_chat_widget_to_vt100(&mut harness, 80, 18)));
+    frames.push(normalize_output(render_chat_widget_to_vt100(
+        &mut harness,
+        80,
+        18,
+    )));
 
     harness.auto_drive_set_waiting_for_response(
         "Review complete — resuming tasks",
         Some("Coordinator resumed the workflow.".to_string()),
         Some("Review cleared open issues.".to_string()),
     );
-    frames.push(normalize_output(render_chat_widget_to_vt100(&mut harness, 80, 18)));
+    frames.push(normalize_output(render_chat_widget_to_vt100(
+        &mut harness,
+        80,
+        18,
+    )));
 
     insta::assert_snapshot!(
         "auto_drive_review_resume_returns_to_running",
@@ -1095,11 +1150,14 @@ fn scroll_spacing_remains_when_scrolled_up() {
 
     harness.push_user_prompt("First user message about scrolling behaviour.");
     harness.push_assistant_markdown("Assistant reply number one with enough text to wrap the layout and ensure spacing stays visible while at the bottom of the viewport.");
-    harness.push_user_prompt("Second user follow-up that also contributes to the total height so we can scroll.");
+    harness.push_user_prompt(
+        "Second user follow-up that also contributes to the total height so we can scroll.",
+    );
     harness.push_assistant_markdown("Assistant reply number two with multiple paragraphs.\n\nHere is another paragraph to expand height.\n\nYet another paragraph for good measure.");
     harness.push_user_prompt("Third user prompt to push history further.");
     harness.push_assistant_markdown("Assistant reply number three, still going strong.\n\n- Bullet one\n- Bullet two\n- Bullet three");
-    harness.push_user_prompt("Fourth user prompt to guarantee overflow beyond the viewport height.");
+    harness
+        .push_user_prompt("Fourth user prompt to guarantee overflow beyond the viewport height.");
     harness.push_assistant_markdown("Assistant reply number four with extra padding to pad out the history list even more.\n\nFinal paragraph to top it off.");
 
     let _bottom = normalize_output(render_chat_widget_to_vt100(&mut harness, 80, 24));
@@ -1115,15 +1173,11 @@ fn scroll_spacing_remains_when_scrolled_up() {
 
     let collapsed_boundaries = count_collapsed_boundaries(&scrolled);
     assert_eq!(
-        0,
-        collapsed_boundaries,
+        0, collapsed_boundaries,
         "Spacing collapsed unexpectedly when scrolled; investigate history layout spacing"
     );
 
-    insta::assert_snapshot!(
-        "scroll_spacing_scrolled_intact",
-        scrolled
-    );
+    insta::assert_snapshot!("scroll_spacing_scrolled_intact", scrolled);
 }
 
 #[test]
@@ -1183,7 +1237,11 @@ fn assert_final_line_visible(mut harness: ChatWidgetHarness, viewport_height: u1
         return;
     }
     harness_force_scroll_offset(&mut harness, 0);
-    let frame = normalize_output(render_chat_widget_to_vt100(&mut harness, 60, viewport_height));
+    let frame = normalize_output(render_chat_widget_to_vt100(
+        &mut harness,
+        60,
+        viewport_height,
+    ));
     assert!(
         frame.contains("FINAL ROW SENTINEL -- ensure this stays visible."),
         "final assistant line disappeared for viewport {viewport_height}:\n{}",
@@ -1600,10 +1658,7 @@ fn browser_session_grouped_with_unordered_actions() {
 
     let output = render_chat_widget_to_vt100(&mut harness, 80, 32);
     let output = normalize_output(output);
-    insta::assert_snapshot!(
-        "browser_session_grouped_with_unordered_actions",
-        output
-    );
+    insta::assert_snapshot!("browser_session_grouped_with_unordered_actions", output);
 }
 
 #[test]
@@ -1664,10 +1719,7 @@ fn browser_session_skips_foreign_background_events() {
     });
 
     let output = normalize_output(render_chat_widget_to_vt100(&mut harness, 80, 24));
-    insta::assert_snapshot!(
-        "browser_session_skips_foreign_background_events",
-        output
-    );
+    insta::assert_snapshot!("browser_session_skips_foreign_background_events", output);
 }
 
 #[test]
@@ -1800,20 +1852,18 @@ fn agent_run_grouped_plain_tool_name() {
         id: "agent-status".into(),
         event_seq,
         msg: EventMsg::AgentStatusUpdate(AgentStatusUpdateEvent {
-            agents: vec![
-                AgentInfo {
-                    id: "qa-bot".into(),
-                    name: "QA Bot".into(),
-                    status: "running".into(),
-                    batch_id: Some("batch-plain".into()),
-                    model: Some("claude".into()),
-                    last_progress: Some("Executing smoke tests".into()),
-                    result: None,
-                    error: None,
-                    elapsed_ms: Some(18_750),
-                    token_count: Some(8_900),
-                },
-            ],
+            agents: vec![AgentInfo {
+                id: "qa-bot".into(),
+                name: "QA Bot".into(),
+                status: "running".into(),
+                batch_id: Some("batch-plain".into()),
+                model: Some("claude".into()),
+                last_progress: Some("Executing smoke tests".into()),
+                result: None,
+                error: None,
+                elapsed_ms: Some(18_750),
+                token_count: Some(8_900),
+            }],
             context: Some("regression sweep".into()),
             task: Some("Ship bugfix patch".into()),
         }),
@@ -1931,7 +1981,10 @@ fn agents_terminal_overlay_full_details() {
                     batch_id: Some("batch-docs".into()),
                     model: Some("claude-3-opus".into()),
                     last_progress: Some("Synthesizing highlights".into()),
-                    result: Some("### Highlights\n- New Auto Drive controls\n- Faster release approvals".into()),
+                    result: Some(
+                        "### Highlights\n- New Auto Drive controls\n- Faster release approvals"
+                            .into(),
+                    ),
                     error: None,
                     elapsed_ms: Some(12_700),
                     token_count: Some(7_200),
@@ -2031,7 +2084,11 @@ fn plan_agent_keeps_single_aggregate_block() {
 
     let output = render_chat_widget_to_vt100(&mut harness, 80, 40);
     let agent_blocks = harness.count_agent_run_cells();
-    assert_eq!(agent_blocks, 1, "expected a single aggregate agent block, saw {}\n{}", agent_blocks, output);
+    assert_eq!(
+        agent_blocks, 1,
+        "expected a single aggregate agent block, saw {}\n{}",
+        agent_blocks, output
+    );
 }
 
 #[test]
@@ -2203,7 +2260,10 @@ fn agents_toggle_claude_opus_persists_via_slash_command() {
     harness.open_agents_settings_overlay();
 
     let overlay_initial = normalize_output(render_chat_widget_to_vt100(&mut harness, 100, 28));
-    assert!(overlay_initial.contains("Agents"), "Agents overlay did not open");
+    assert!(
+        overlay_initial.contains("Agents"),
+        "Agents overlay did not open"
+    );
 
     harness.show_agent_editor("claude-opus-4.5");
 
@@ -2412,9 +2472,19 @@ fn agent_parallel_batches_do_not_duplicate_cells() {
     );
 
     let output = normalize_output(render_chat_widget_to_vt100(&mut harness, 80, 32));
-    assert_eq!(harness.count_agent_run_cells(), 2, "expected one card per batch\n{output}");
-    assert!(output.contains("Pizza Plan"), "missing pizza batch details\n{output}");
-    assert!(output.contains("Burger Plan"), "missing burger batch details\n{output}");
+    assert_eq!(
+        harness.count_agent_run_cells(),
+        2,
+        "expected one card per batch\n{output}"
+    );
+    assert!(
+        output.contains("Pizza Plan"),
+        "missing pizza batch details\n{output}"
+    );
+    assert!(
+        output.contains("Burger Plan"),
+        "missing burger batch details\n{output}"
+    );
     assert!(
         output.contains("Plan how to make a pizza with prep and bake timelines"),
         "pizza task missing\n{output}"
@@ -2423,7 +2493,10 @@ fn agent_parallel_batches_do_not_duplicate_cells() {
         output.contains("Plan how to make a burger with toppings and timing"),
         "burger task missing or overwritten\n{output}"
     );
-    assert!(!output.contains("batch-pizza"), "raw pizza batch id leaked into header\n{output}");
+    assert!(
+        !output.contains("batch-pizza"),
+        "raw pizza batch id leaked into header\n{output}"
+    );
 }
 
 #[test]
@@ -2439,12 +2512,20 @@ fn auto_drive_intro_animation_during_settings_toggle() {
     );
 
     let mut frames = Vec::new();
-    frames.push(normalize_output(render_chat_widget_to_vt100(&mut harness, 80, 18)));
+    frames.push(normalize_output(render_chat_widget_to_vt100(
+        &mut harness,
+        80,
+        18,
+    )));
 
     // Simulate Ctrl+S to open and close settings (triggers auto_rebuild_live_ring)
     harness.simulate_settings_toggle_during_auto();
 
-    frames.push(normalize_output(render_chat_widget_to_vt100(&mut harness, 80, 18)));
+    frames.push(normalize_output(render_chat_widget_to_vt100(
+        &mut harness,
+        80,
+        18,
+    )));
 
     harness.auto_drive_set_waiting_for_response(
         "Processing request",
@@ -2452,7 +2533,11 @@ fn auto_drive_intro_animation_during_settings_toggle() {
         None,
     );
 
-    frames.push(normalize_output(render_chat_widget_to_vt100(&mut harness, 80, 18)));
+    frames.push(normalize_output(render_chat_widget_to_vt100(
+        &mut harness,
+        80,
+        18,
+    )));
 
     insta::assert_snapshot!(
         "auto_drive_intro_animation_during_settings_toggle",

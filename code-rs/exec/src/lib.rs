@@ -4,7 +4,6 @@ mod event_processor_with_human_output;
 mod event_processor_with_json_output;
 
 pub use cli::Cli;
-use code_auto_drive_core::start_auto_coordinator;
 use code_auto_drive_core::AutoCoordinatorCommand;
 use code_auto_drive_core::AutoCoordinatorEvent;
 use code_auto_drive_core::AutoCoordinatorEventSender;
@@ -14,14 +13,15 @@ use code_auto_drive_core::AutoTurnAgentsAction;
 use code_auto_drive_core::AutoTurnAgentsTiming;
 use code_auto_drive_core::AutoTurnCliAction;
 use code_auto_drive_core::MODEL_SLUG;
+use code_auto_drive_core::start_auto_coordinator;
 use code_core::AuthManager;
 use code_core::BUILT_IN_OSS_MODEL_PROVIDER_ID;
+use code_core::CodexConversation;
 use code_core::ConversationManager;
 use code_core::NewConversation;
-use code_core::CodexConversation;
-use code_core::config::set_default_originator;
 use code_core::config::Config;
 use code_core::config::ConfigOverrides;
+use code_core::config::set_default_originator;
 use code_core::git_info::get_git_repo_root;
 use code_core::protocol::AskForApproval;
 use code_core::protocol::Event;
@@ -29,14 +29,14 @@ use code_core::protocol::EventMsg;
 use code_core::protocol::InputItem;
 use code_core::protocol::Op;
 use code_core::protocol::TaskCompleteEvent;
+use code_ollama::DEFAULT_OSS_MODEL;
+use code_protocol::config_types::SandboxMode;
 use code_protocol::models::ContentItem;
 use code_protocol::models::ResponseItem;
 use code_protocol::protocol::SessionSource;
-use code_ollama::DEFAULT_OSS_MODEL;
-use code_protocol::config_types::SandboxMode;
+use event_processor::handle_last_message;
 use event_processor_with_human_output::EventProcessorWithHumanOutput;
 use event_processor_with_json_output::EventProcessorWithJsonOutput;
-use event_processor::handle_last_message;
 use serde_json::Value;
 use std::io::IsTerminal;
 use std::io::Read;
@@ -46,15 +46,17 @@ use supports_color::Stream;
 use tracing::debug;
 use tracing::error;
 use tracing::info;
-use tracing_subscriber::filter::filter_fn;
 use tracing_subscriber::EnvFilter;
+use tracing_subscriber::filter::filter_fn;
 use tracing_subscriber::prelude::*;
 
-use anyhow::Context;
 use crate::cli::Command as ExecCommand;
 use crate::event_processor::CodexStatus;
 use crate::event_processor::EventProcessor;
-use code_core::{entry_to_rollout_path, SessionCatalog, SessionQuery};
+use anyhow::Context;
+use code_core::SessionCatalog;
+use code_core::SessionQuery;
+use code_core::entry_to_rollout_path;
 
 const AUTO_DRIVE_TEST_SUFFIX: &str = "After planning, but before you start, please ensure you can test the outcome of your changes. Test first to ensure it's failing, then again at the end to ensure it passes. Do not use work arounds or mock code to pass - solve the underlying issue. Create new tests as you work if needed. Once done, clean up your tests unless added to an existing test suite.";
 
@@ -130,17 +132,21 @@ pub async fn run_main(cli: Cli, code_linux_sandbox_exe: Option<PathBuf>) -> anyh
     let mut auto_drive_goal: Option<String> = None;
     let trimmed_prompt = prompt.trim();
     if trimmed_prompt.starts_with("/auto") {
-        auto_drive_goal = Some(trimmed_prompt.trim_start_matches("/auto").trim().to_string());
+        auto_drive_goal = Some(
+            trimmed_prompt
+                .trim_start_matches("/auto")
+                .trim()
+                .to_string(),
+        );
     }
     if auto_drive {
         if trimmed_prompt.is_empty() {
-            eprintln!("Auto Drive requires a goal. Provide one after --auto or prefix the prompt with /auto.");
+            eprintln!(
+                "Auto Drive requires a goal. Provide one after --auto or prefix the prompt with /auto."
+            );
             std::process::exit(1);
         }
-        if auto_drive_goal
-            .as_ref()
-            .is_some_and(|goal| goal.is_empty())
-        {
+        if auto_drive_goal.as_ref().is_some_and(|goal| goal.is_empty()) {
             auto_drive_goal = Some(trimmed_prompt.to_string());
         } else if auto_drive_goal.is_none() {
             auto_drive_goal = Some(trimmed_prompt.to_string());
@@ -255,13 +261,11 @@ pub async fn run_main(cli: Cli, code_linux_sandbox_exe: Option<PathBuf>) -> anyh
         .map_err(|e| std::io::Error::other(e.to_string()))?;
 
     let fmt_layer = fmt_layer.with_filter(env_filter);
-    let _ = match _otel
-        .as_ref()
-        .map(|provider| {
-            provider
-                .layer()
-                .with_filter(filter_fn(code_core::otel_init::code_export_filter))
-        }) {
+    let _ = match _otel.as_ref().map(|provider| {
+        provider
+            .layer()
+            .with_filter(filter_fn(code_core::otel_init::code_export_filter))
+    }) {
         Some(otel_layer) => tracing_subscriber::registry()
             .with(fmt_layer)
             .with(otel_layer)
@@ -351,15 +355,14 @@ pub async fn run_main(cli: Cli, code_linux_sandbox_exe: Option<PathBuf>) -> anyh
         let conversation = conversation.clone();
         tokio::spawn(async move {
             #[cfg(unix)]
-            let mut sigterm_stream = match tokio::signal::unix::signal(
-                tokio::signal::unix::SignalKind::terminate(),
-            ) {
-                Ok(stream) => Some(stream),
-                Err(err) => {
-                    tracing::warn!("failed to install SIGTERM handler: {err}");
-                    None
-                }
-            };
+            let mut sigterm_stream =
+                match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
+                    Ok(stream) => Some(stream),
+                    Err(err) => {
+                        tracing::warn!("failed to install SIGTERM handler: {err}");
+                        None
+                    }
+                };
             #[cfg(unix)]
             let mut sigterm_requested = false;
 
@@ -494,9 +497,7 @@ pub async fn run_main(cli: Cli, code_linux_sandbox_exe: Option<PathBuf>) -> anyh
     // Send the prompt.
     let items: Vec<InputItem> = vec![InputItem::Text { text: prompt }];
     // Fallback for older core protocol: send only user input items.
-    let initial_prompt_task_id = conversation
-        .submit(Op::UserInput { items })
-        .await?;
+    let initial_prompt_task_id = conversation.submit(Op::UserInput { items }).await?;
     info!("Sent prompt with event ID: {initial_prompt_task_id}");
 
     // Run the loop until the task is complete.
@@ -545,7 +546,11 @@ async fn resolve_resume_path(
         let query = SessionQuery {
             cwd: None,
             git_root: None,
-            sources: vec![SessionSource::Cli, SessionSource::VSCode, SessionSource::Exec],
+            sources: vec![
+                SessionSource::Cli,
+                SessionSource::VSCode,
+                SessionSource::Exec,
+            ],
             min_user_messages: 1,
             include_archived: false,
             include_deleted: false,
@@ -661,14 +666,20 @@ async fn run_auto_drive_session(
                         let TurnResult {
                             last_agent_message,
                             error_seen: turn_error,
-                        } = submit_and_wait(&conversation, event_processor.as_mut(), prompt_text.to_string()).await?;
+                        } = submit_and_wait(
+                            &conversation,
+                            event_processor.as_mut(),
+                            prompt_text.to_string(),
+                        )
+                        .await?;
                         error_seen |= turn_error;
                         if let Some(text) = last_agent_message {
                             history.append_raw(&[make_assistant_message(text.clone())]);
                             final_last_message = Some(text);
                         }
-                        let _ = handle
-                            .send(AutoCoordinatorCommand::UpdateConversation(history.raw_snapshot()));
+                        let _ = handle.send(AutoCoordinatorCommand::UpdateConversation(
+                            history.raw_snapshot(),
+                        ));
                     }
                 }
             }
@@ -697,8 +708,10 @@ async fn run_auto_drive_session(
                 }
 
                 let Some(cli_action) = cli else {
-                    if matches!(status, AutoCoordinatorStatus::Success | AutoCoordinatorStatus::Failed)
-                    {
+                    if matches!(
+                        status,
+                        AutoCoordinatorStatus::Success | AutoCoordinatorStatus::Failed
+                    ) {
                         let _ = handle.send(AutoCoordinatorCommand::Stop);
                     }
                     continue;
@@ -718,7 +731,9 @@ async fn run_auto_drive_session(
                 }
 
                 if handle
-                    .send(AutoCoordinatorCommand::UpdateConversation(history.raw_snapshot()))
+                    .send(AutoCoordinatorCommand::UpdateConversation(
+                        history.raw_snapshot(),
+                    ))
                     .is_err()
                 {
                     break;
@@ -726,6 +741,28 @@ async fn run_auto_drive_session(
             }
             AutoCoordinatorEvent::StopAck => {
                 break;
+            }
+            // Enhanced Auto Drive events
+            AutoCoordinatorEvent::CheckpointSaved { session_id, turns } => {
+                println!("[auto] checkpoint saved: {session_id} ({turns} turns)");
+            }
+            AutoCoordinatorEvent::CheckpointRestored { session_id, turns } => {
+                println!("[auto] checkpoint restored: {session_id} ({turns} turns)");
+            }
+            AutoCoordinatorEvent::DiagnosticAlert {
+                alert_type,
+                message,
+            } => {
+                println!("[auto] diagnostic alert ({alert_type:?}): {message}");
+            }
+            AutoCoordinatorEvent::BudgetAlert {
+                alert_type,
+                message,
+            } => {
+                println!("[auto] budget alert ({alert_type:?}): {message}");
+            }
+            AutoCoordinatorEvent::InterventionRequired { reason } => {
+                println!("[auto] intervention required: {reason}");
             }
         }
     }
@@ -789,12 +826,12 @@ fn build_auto_prompt(
         lines.push("Please use agents to help you complete this task.".to_string());
 
         for action in agents {
-            let prompt = action
-                .prompt
-                .trim()
-                .replace('\n', " ")
-                .replace('"', "\\\"");
-            let write_text = if action.write { "write: true" } else { "write: false" };
+            let prompt = action.prompt.trim().replace('\n', " ").replace('"', "\\\"");
+            let write_text = if action.write {
+                "write: true"
+            } else {
+                "write: false"
+            };
 
             lines.push(String::new());
             lines.push(format!("prompt: \"{prompt}\" ({write_text})"));
@@ -929,17 +966,26 @@ fn load_output_schema(path: Option<PathBuf>) -> Option<Value> {
 mod tests {
     use super::*;
     use std::io::Write;
-    use std::path::{Path, PathBuf};
-    use std::time::{Duration, SystemTime};
+    use std::path::Path;
+    use std::path::PathBuf;
+    use std::time::Duration;
+    use std::time::SystemTime;
 
-    use code_core::config::{ConfigOverrides, ConfigToml};
-    use code_protocol::models::{ContentItem, ResponseItem};
+    use code_core::config::ConfigOverrides;
+    use code_core::config::ConfigToml;
     use code_protocol::mcp_protocol::ConversationId;
-    use code_protocol::protocol::{
-        EventMsg as ProtoEventMsg, RecordedEvent, RolloutItem, RolloutLine, SessionMeta,
-        SessionMetaLine, SessionSource, UserMessageEvent,
-    };
-    use filetime::{set_file_mtime, FileTime};
+    use code_protocol::models::ContentItem;
+    use code_protocol::models::ResponseItem;
+    use code_protocol::protocol::EventMsg as ProtoEventMsg;
+    use code_protocol::protocol::RecordedEvent;
+    use code_protocol::protocol::RolloutItem;
+    use code_protocol::protocol::RolloutLine;
+    use code_protocol::protocol::SessionMeta;
+    use code_protocol::protocol::SessionMetaLine;
+    use code_protocol::protocol::SessionSource;
+    use code_protocol::protocol::UserMessageEvent;
+    use filetime::FileTime;
+    use filetime::set_file_mtime;
     use tempfile::TempDir;
     use uuid::Uuid;
 
@@ -964,7 +1010,11 @@ mod tests {
         source: SessionSource,
         message: &str,
     ) -> PathBuf {
-        let sessions_dir = code_home.join("sessions").join("2025").join("11").join("16");
+        let sessions_dir = code_home
+            .join("sessions")
+            .join("2025")
+            .join("11")
+            .join("16");
         std::fs::create_dir_all(&sessions_dir).unwrap();
         let filename = format!(
             "rollout-{}-{}.jsonl",
@@ -1137,8 +1187,16 @@ mod tests {
         );
 
         let base = SystemTime::now();
-        set_file_mtime(&older_path, FileTime::from_system_time(base + Duration::from_secs(500))).unwrap();
-        set_file_mtime(&newer_path, FileTime::from_system_time(base + Duration::from_secs(10))).unwrap();
+        set_file_mtime(
+            &older_path,
+            FileTime::from_system_time(base + Duration::from_secs(500)),
+        )
+        .unwrap();
+        set_file_mtime(
+            &newer_path,
+            FileTime::from_system_time(base + Duration::from_secs(10)),
+        )
+        .unwrap();
 
         let args = crate::cli::ResumeArgs {
             session_id: None,

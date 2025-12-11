@@ -3,8 +3,8 @@ use std::sync::Arc;
 
 use super::AgentTask;
 use super::Session;
-use super::compact_remote;
 use super::TurnContext;
+use super::compact_remote;
 use super::get_last_assistant_message_from_turn;
 use crate::Prompt;
 use crate::client_common::ResponseEvent;
@@ -14,25 +14,26 @@ use crate::error::Result as CodexResult;
 use crate::protocol::AgentMessageEvent;
 use crate::protocol::ErrorEvent;
 use crate::protocol::EventMsg;
-use code_protocol::protocol::CompactionCheckpointWarningEvent;
 use crate::protocol::InputItem;
 use crate::protocol::TaskCompleteEvent;
 use crate::truncate::truncate_middle;
 use crate::util::backoff;
 use askama::Template;
+use base64::Engine;
+use code_app_server_protocol::AuthMode;
 use code_protocol::models::ContentItem;
 use code_protocol::models::FunctionCallOutputPayload;
 use code_protocol::models::ResponseInputItem;
 use code_protocol::models::ResponseItem;
 use code_protocol::protocol::CompactedItem;
+use code_protocol::protocol::CompactionCheckpointWarningEvent;
 use code_protocol::protocol::InputMessageKind;
 use code_protocol::protocol::RolloutItem;
-use base64::Engine;
 use futures::prelude::*;
-use code_app_server_protocol::AuthMode;
 
 pub const SUMMARIZATION_PROMPT: &str = include_str!("../../templates/compact/prompt.md");
-pub const COMPACTION_CHECKPOINT_MESSAGE: &str = "History checkpoint: earlier conversation compacted.";
+pub const COMPACTION_CHECKPOINT_MESSAGE: &str =
+    "History checkpoint: earlier conversation compacted.";
 const COMPACT_USER_MESSAGE_MAX_TOKENS: usize = 20_000;
 const COMPACT_TEXT_CONTENT_MAX_BYTES: usize = 8 * 1024;
 const COMPACT_TOOL_ARGS_MAX_BYTES: usize = 4 * 1024;
@@ -99,7 +100,9 @@ pub fn collect_compaction_snippets(items: &[ResponseItem]) -> Vec<CompactionSnip
                 break;
             }
             let snippet_len = truncated.len();
-            if !snippets.is_empty() && total_bytes + snippet_len > COMPACT_USER_MESSAGE_MAX_TOKENS * 4 {
+            if !snippets.is_empty()
+                && total_bytes + snippet_len > COMPACT_USER_MESSAGE_MAX_TOKENS * 4
+            {
                 break;
             }
             total_bytes += snippet_len;
@@ -171,7 +174,9 @@ pub(super) async fn run_inline_auto_compact_task(
 ) -> Vec<ResponseItem> {
     let sub_id = sess.next_internal_sub_id();
     let prompt_text = resolve_compact_prompt_text(turn_context.compact_prompt_override.as_deref());
-    let input = vec![InputItem::Text { text: prompt_text.clone() }];
+    let input = vec![InputItem::Text {
+        text: prompt_text.clone(),
+    }];
     run_compact_task_inner_inline(sess, turn_context, sub_id, input).await
 }
 
@@ -192,14 +197,7 @@ pub(super) async fn run_compact_task(
         )
         .await
     } else {
-        perform_compaction(
-            sess.clone(),
-            turn_context,
-            sub_id.clone(),
-            input,
-            true,
-        )
-        .await
+        perform_compaction(sess.clone(), turn_context, sub_id.clone(), input, true).await
     };
 
     let _ = compaction_result;
@@ -294,7 +292,8 @@ pub(super) async fn perform_compaction(
 
                 // Apply emergency fallback: reset history to minimal state
                 let initial_context = sess.build_initial_context(turn_context.as_ref());
-                let emergency_history = build_emergency_compacted_history(initial_context, emergency_message);
+                let emergency_history =
+                    build_emergency_compacted_history(initial_context, emergency_message);
                 sess.replace_history(emergency_history);
 
                 // Still return error to signal compaction didn't complete normally,
@@ -305,14 +304,13 @@ pub(super) async fn perform_compaction(
                 if retries < max_retries {
                     retries += 1;
                     let delay = backoff(retries);
-                    sess
-                        .notify_stream_error(
-                            &sub_id,
-                            format!(
-                                "stream error: {e}; retrying {retries}/{max_retries} in {delay:?}…"
-                            ),
-                        )
-                        .await;
+                    sess.notify_stream_error(
+                        &sub_id,
+                        format!(
+                            "stream error: {e}; retrying {retries}/{max_retries} in {delay:?}…"
+                        ),
+                    )
+                    .await;
                     tokio::time::sleep(delay).await;
                     continue;
                 } else {
@@ -445,7 +443,8 @@ async fn run_compact_task_inner_inline(
 
                 // Return minimal emergency history: just initial context + warning message
                 let initial_context = sess.build_initial_context(turn_context.as_ref());
-                let emergency_history = build_emergency_compacted_history(initial_context, emergency_message);
+                let emergency_history =
+                    build_emergency_compacted_history(initial_context, emergency_message);
 
                 // Update session history with emergency fallback
                 {
@@ -461,14 +460,13 @@ async fn run_compact_task_inner_inline(
                 if retries < max_retries {
                     retries += 1;
                     let delay = backoff(retries);
-                    sess
-                        .notify_stream_error(
-                            &sub_id,
-                            format!(
-                                "stream error: {e}; retrying {retries}/{max_retries} in {delay:?}…"
-                            ),
-                        )
-                        .await;
+                    sess.notify_stream_error(
+                        &sub_id,
+                        format!(
+                            "stream error: {e}; retrying {retries}/{max_retries} in {delay:?}…"
+                        ),
+                    )
+                    .await;
                     tokio::time::sleep(delay).await;
                     continue;
                 } else {
@@ -595,9 +593,7 @@ pub fn sanitize_items_for_compact(items: Vec<ResponseItem>) -> Vec<ResponseItem>
                             {
                                 let bytes = image_url.len();
                                 filtered_content.push(ContentItem::InputText {
-                                    text: format!(
-                                        "(image omitted for compaction; {bytes} bytes)",
-                                    ),
+                                    text: format!("(image omitted for compaction; {bytes} bytes)",),
                                 });
                             } else {
                                 filtered_content.push(ContentItem::InputImage { image_url });
@@ -681,11 +677,7 @@ pub fn prune_orphan_tool_outputs(items: &mut Vec<ResponseItem>) -> usize {
             | ResponseItem::CustomToolCall { call_id, .. } => {
                 seen_calls.insert(call_id.clone());
             }
-            ResponseItem::LocalShellCall {
-                id,
-                call_id,
-                ..
-            } => {
+            ResponseItem::LocalShellCall { id, call_id, .. } => {
                 if let Some(call_id) = call_id {
                     seen_calls.insert(call_id.clone());
                 }
@@ -977,7 +969,11 @@ mod tests {
         for idx in 0..15 {
             items.push(ResponseItem::Message {
                 id: None,
-                role: if idx % 2 == 0 { "user".to_string() } else { "assistant".to_string() },
+                role: if idx % 2 == 0 {
+                    "user".to_string()
+                } else {
+                    "assistant".to_string()
+                },
                 content: vec![ContentItem::InputText {
                     text: format!("Message #{idx} {}", "x".repeat(1024)),
                 }],

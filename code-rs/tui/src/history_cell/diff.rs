@@ -1,5 +1,9 @@
 use super::*;
-use crate::history::state::{DiffHunk, DiffLine, DiffLineKind, DiffRecord, HistoryId};
+use crate::history::state::DiffHunk;
+use crate::history::state::DiffLine;
+use crate::history::state::DiffLineKind;
+use crate::history::state::DiffRecord;
+use crate::history::state::HistoryId;
 pub(crate) struct DiffCell {
     record: DiffRecord,
 }
@@ -58,12 +62,8 @@ pub(crate) fn diff_lines_from_record(record: &DiffRecord) -> Vec<Line<'static>> 
             };
             let content = format!("{}{}", prefix, diff_line.content);
             let styled = match diff_line.kind {
-                DiffLineKind::Addition => {
-                    Line::from(content).fg(crate::colors::success())
-                }
-                DiffLineKind::Removal => {
-                    Line::from(content).fg(crate::colors::error())
-                }
+                DiffLineKind::Addition => Line::from(content).fg(crate::colors::success()),
+                DiffLineKind::Removal => Line::from(content).fg(crate::colors::error()),
                 DiffLineKind::Context => Line::from(content),
             };
             lines.push(styled);

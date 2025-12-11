@@ -3,14 +3,19 @@
 //! Ensures the `/new` flow tears down the previous `McpConnectionManager`
 //! before spawning the next session so stdio servers exit cleanly.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
+use std::collections::HashSet;
 use std::env;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::path::PathBuf;
 use std::process::Command;
 use std::time::Duration;
 
-use code_core::config::{Config, ConfigOverrides, ConfigToml};
-use code_core::config_types::{McpServerConfig, McpServerTransportConfig};
+use code_core::config::Config;
+use code_core::config::ConfigOverrides;
+use code_core::config::ConfigToml;
+use code_core::config_types::McpServerConfig;
+use code_core::config_types::McpServerTransportConfig;
 use code_core::mcp_connection_manager::McpConnectionManager;
 
 const WRAPPER_SOURCE: &str = r#"
@@ -123,13 +128,9 @@ async fn mcp_stdio_server_exits_before_next_session() {
     let servers_map = config.mcp_servers.clone();
     let use_rmcp = config.use_experimental_use_rmcp_client;
 
-    let (manager1, _) = McpConnectionManager::new(
-        servers_map.clone(),
-        use_rmcp,
-        HashSet::new(),
-    )
-    .await
-    .expect("start first MCP manager");
+    let (manager1, _) = McpConnectionManager::new(servers_map.clone(), use_rmcp, HashSet::new())
+        .await
+        .expect("start first MCP manager");
 
     wait_for_spawn_count(&log_path, 1).await;
 
@@ -163,7 +164,10 @@ async fn wait_for_spawn_count(path: &Path, expected: usize) {
         }
         tokio::time::sleep(Duration::from_millis(50)).await;
     }
-    panic!("timed out waiting for {expected} spawn entries; log: {}", read_log(path));
+    panic!(
+        "timed out waiting for {expected} spawn entries; log: {}",
+        read_log(path)
+    );
 }
 
 async fn wait_for_exit(path: &Path, pid: u32, timeout: Duration) -> bool {

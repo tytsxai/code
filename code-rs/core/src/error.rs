@@ -1,5 +1,7 @@
 use crate::exec::ExecToolCallOutput;
-use chrono::{DateTime, Duration as ChronoDuration, Utc};
+use chrono::DateTime;
+use chrono::Duration as ChronoDuration;
+use chrono::Utc;
 use reqwest::StatusCode;
 use serde_json;
 use std::io;
@@ -50,9 +52,8 @@ pub struct RetryAfter {
 
 impl RetryAfter {
     pub fn from_duration(delay: Duration, now: DateTime<Utc>) -> Self {
-        let resume_at = now
-            + ChronoDuration::from_std(delay)
-                .unwrap_or_else(|_| ChronoDuration::zero());
+        let resume_at =
+            now + ChronoDuration::from_std(delay).unwrap_or_else(|_| ChronoDuration::zero());
         Self { delay, resume_at }
     }
 
@@ -327,7 +328,7 @@ pub fn get_error_message_ui(e: &CodexErr) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn usage_limit_reached_error_formats_plus_plan() {
         let err = UsageLimitReachedError {

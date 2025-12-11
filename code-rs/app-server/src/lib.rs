@@ -17,8 +17,8 @@ use tokio::sync::mpsc;
 use tracing::debug;
 use tracing::error;
 use tracing::info;
-use tracing_subscriber::filter::filter_fn;
 use tracing_subscriber::EnvFilter;
+use tracing_subscriber::filter::filter_fn;
 use tracing_subscriber::prelude::*;
 
 use crate::message_processor::MessageProcessor;
@@ -30,7 +30,6 @@ mod error_code;
 mod fuzzy_file_search;
 mod message_processor;
 pub mod outgoing_message;
-
 
 /// Size of the bounded channels used to communicate between tasks. The value
 /// is a balance between throughput and memory usage – 128 messages should be
@@ -101,9 +100,7 @@ pub async fn run_main(
                 .with(otel_layer)
                 .try_init()
         }
-        None => tracing_subscriber::registry()
-            .with(fmt_layer)
-            .try_init(),
+        None => tracing_subscriber::registry().with(fmt_layer).try_init(),
     };
 
     // Task: process incoming messages.

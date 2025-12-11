@@ -156,7 +156,8 @@ impl CompactionEngine {
 
         // Always keep recent items
         let recent_start = items.len().saturating_sub(self.config.keep_recent);
-        let recent_indices: HashSet<usize> = items[recent_start..].iter().map(|i| i.index).collect();
+        let recent_indices: HashSet<usize> =
+            items[recent_start..].iter().map(|i| i.index).collect();
 
         // Sort items by importance (ascending) for removal candidates
         let mut removal_candidates: Vec<&ItemClassification> = items
@@ -187,9 +188,8 @@ impl CompactionEngine {
             .collect();
 
         // Sort by importance (low first) then by index (older first)
-        removal_candidates.sort_by(|a, b| {
-            a.importance.cmp(&b.importance).then(a.index.cmp(&b.index))
-        });
+        removal_candidates
+            .sort_by(|a, b| a.importance.cmp(&b.importance).then(a.index.cmp(&b.index)));
 
         // Remove items until we reach target
         let mut current_tokens = tokens_before;
@@ -226,10 +226,16 @@ impl CompactionEngine {
         let removal_summary = if removed_summaries.is_empty() {
             "No items removed".to_string()
         } else {
-            format!("Removed {} items: {}", removed_summaries.len(), removed_summaries.join("; "))
+            format!(
+                "Removed {} items: {}",
+                removed_summaries.len(),
+                removed_summaries.join("; ")
+            )
         };
 
-        let goal_preserved = goal_index.map(|i| !remove_indices.contains(&i)).unwrap_or(true);
+        let goal_preserved = goal_index
+            .map(|i| !remove_indices.contains(&i))
+            .unwrap_or(true);
 
         CompactionResult {
             keep_indices,
@@ -430,7 +436,10 @@ mod tests {
         let result = engine.compact(&items);
 
         // Error should be preserved (preserve_errors = true)
-        assert!(result.keep_indices.contains(&1), "Error item should be preserved");
+        assert!(
+            result.keep_indices.contains(&1),
+            "Error item should be preserved"
+        );
         // Goal should be preserved
         assert!(result.keep_indices.contains(&0), "Goal should be preserved");
     }

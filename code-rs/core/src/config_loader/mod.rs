@@ -6,7 +6,8 @@ use std::io;
 use std::path::Path;
 use std::path::PathBuf;
 use tokio::fs;
-use tokio::runtime::{Builder as RuntimeBuilder, Handle};
+use tokio::runtime::Builder as RuntimeBuilder;
+use tokio::runtime::Handle;
 use toml::Value as TomlValue;
 
 #[cfg(unix)]

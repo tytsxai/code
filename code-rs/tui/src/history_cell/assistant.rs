@@ -107,10 +107,7 @@ impl AssistantMarkdownCell {
         let mut cur_y = area.y;
         let end_y = area.y.saturating_add(area.height);
 
-        if remaining_skip == 0
-            && cur_y < end_y
-            && area.height.saturating_sub(skip_rows) > 1
-        {
+        if remaining_skip == 0 && cur_y < end_y && area.height.saturating_sub(skip_rows) > 1 {
             cur_y = cur_y.saturating_add(1);
         }
         remaining_skip = remaining_skip.saturating_sub(1);
@@ -159,9 +156,7 @@ impl AssistantMarkdownCell {
                     }
 
                     let full_height = lines.len() as u16 + 2;
-                    let card_w = max_line_width
-                        .saturating_add(6)
-                        .min(area.width.max(6));
+                    let card_w = max_line_width.saturating_add(6).min(area.width.max(6));
 
                     let temp_area = Rect::new(0, 0, card_w, full_height);
                     let mut temp_buf = Buffer::empty(temp_area);
@@ -229,10 +224,7 @@ impl AssistantMarkdownCell {
             }
         }
 
-        if remaining_skip == 0
-            && cur_y < end_y
-            && area.height.saturating_sub(skip_rows) > 1
-        {
+        if remaining_skip == 0 && cur_y < end_y && area.height.saturating_sub(skip_rows) > 1 {
             cur_y = cur_y.saturating_add(1);
         } else {
             remaining_skip = remaining_skip.saturating_sub(1);
@@ -331,9 +323,13 @@ pub(crate) fn compute_assistant_layout_with_context(
     let text_wrap_width = width;
     let mut segs: Vec<AssistantSeg> = Vec::new();
     let mut text_buf: Vec<Line<'static>> = Vec::new();
-    let mut iter = super::trim_empty_lines(assistant_markdown_lines_with_context(state, file_opener, cwd))
-        .into_iter()
-        .peekable();
+    let mut iter = super::trim_empty_lines(assistant_markdown_lines_with_context(
+        state,
+        file_opener,
+        cwd,
+    ))
+    .into_iter()
+    .peekable();
     let measure_line = |line: &Line<'_>| -> u16 {
         line.spans
             .iter()
@@ -363,11 +359,7 @@ pub(crate) fn compute_assistant_layout_with_context(
             let mut content_lines: Vec<Line<'static>> = Vec::new();
             for (idx, candidate) in chunk.into_iter().enumerate() {
                 if idx == 0 {
-                    let flat: String = candidate
-                        .spans
-                        .iter()
-                        .map(|s| s.content.as_ref())
-                        .collect();
+                    let flat: String = candidate.spans.iter().map(|s| s.content.as_ref()).collect();
                     if let Some(s) = flat.strip_prefix("⟦LANG:") {
                         if let Some(end) = s.find('⟧') {
                             lang_label = Some(s[..end].to_string());
@@ -482,9 +474,7 @@ pub(crate) enum AssistantSeg {
 }
 
 // Detect lines that start with a markdown bullet produced by our renderer and return (indent, bullet)
-pub(crate) fn detect_bullet_prefix(
-    line: &ratatui::text::Line<'_>,
-) -> Option<(usize, String)> {
+pub(crate) fn detect_bullet_prefix(line: &ratatui::text::Line<'_>) -> Option<(usize, String)> {
     let bullets = ["-", "•", "◦", "·", "∘", "⋅", "☐", "✔"];
     let spans = &line.spans;
     if spans.is_empty() {

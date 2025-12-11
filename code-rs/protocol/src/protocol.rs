@@ -173,9 +173,7 @@ pub enum Op {
     },
 
     /// Persist the full chat history snapshot for the current session.
-    PersistHistorySnapshot {
-        snapshot: serde_json::Value,
-    },
+    PersistHistorySnapshot { snapshot: serde_json::Value },
 
     /// Request a single history entry identified by `log_id` + `offset`.
     GetHistoryEntryRequest { offset: usize, log_id: u64 },
@@ -283,7 +281,9 @@ pub enum SandboxPolicy {
     },
 }
 
-const fn default_true_bool() -> bool { true }
+const fn default_true_bool() -> bool {
+    true
+}
 
 /// A writable root path accompanied by a list of subpaths that should remain
 /// read‑only even when the root is writable. This is primarily used to ensure

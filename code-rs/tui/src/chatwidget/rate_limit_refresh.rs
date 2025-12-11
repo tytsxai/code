@@ -1,12 +1,21 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use std::sync::Mutex;
 
-use anyhow::{Context, Result};
-use code_core::{AuthManager, ModelClient, Prompt, ResponseEvent};
+use anyhow::Context;
+use anyhow::Result;
+use code_core::AuthManager;
+use code_core::ModelClient;
+use code_core::Prompt;
+use code_core::ResponseEvent;
 use code_core::config::Config;
 use code_core::config_types::ReasoningEffort;
 use code_core::debug_logger::DebugLogger;
-use code_core::protocol::{Event, EventMsg, RateLimitSnapshotEvent, TokenCountEvent};
-use code_protocol::models::{ContentItem, ResponseItem};
+use code_core::protocol::Event;
+use code_core::protocol::EventMsg;
+use code_core::protocol::RateLimitSnapshotEvent;
+use code_core::protocol::TokenCountEvent;
+use code_protocol::models::ContentItem;
+use code_protocol::models::ResponseItem;
 use futures::StreamExt;
 use tokio::runtime::Runtime;
 use uuid::Uuid;
@@ -27,7 +36,8 @@ pub(super) fn start_rate_limit_refresh(
     debug_enabled: bool,
 ) {
     let fallback_tx = app_event_tx.clone();
-    if thread_spawner::spawn_lightweight("rate-refresh", move || {
+    const REFRESH_STACK_BYTES: usize = 1_048_576;
+    if thread_spawner::spawn_with_stack("rate-refresh", REFRESH_STACK_BYTES, move || {
         if let Err(err) = run_refresh(app_event_tx.clone(), config, debug_enabled) {
             let message = format!("Failed to refresh rate limits: {err}");
             app_event_tx.send(AppEvent::RateLimitFetchFailed { message });
@@ -40,11 +50,7 @@ pub(super) fn start_rate_limit_refresh(
     }
 }
 
-fn run_refresh(
-    app_event_tx: AppEventSender,
-    config: Config,
-    debug_enabled: bool,
-) -> Result<()> {
+fn run_refresh(app_event_tx: AppEventSender, config: Config, debug_enabled: bool) -> Result<()> {
     let runtime = build_runtime()?;
     runtime.block_on(async move {
         let auth_mode = if config.using_chatgpt_auth {
@@ -113,12 +119,10 @@ fn run_refresh(
 }
 
 fn build_runtime() -> Result<Runtime> {
-    Ok(
-        tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .context("building rate limit refresh runtime")?,
-    )
+    Ok(tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .context("building rate limit refresh runtime")?)
 }
 
 fn build_model_client(

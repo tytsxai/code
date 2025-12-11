@@ -1,10 +1,12 @@
 use ratatui::buffer::Buffer;
 use ratatui::prelude::*;
 use ratatui::style::Color;
-use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
+use unicode_width::UnicodeWidthChar;
+use unicode_width::UnicodeWidthStr;
 
 use crate::card_theme;
-use crate::card_theme::{CardThemeDefinition, GradientSpec};
+use crate::card_theme::CardThemeDefinition;
+use crate::card_theme::GradientSpec;
 use crate::colors;
 use crate::gradient_background::GradientBackground;
 
@@ -220,7 +222,11 @@ pub(crate) fn truncate_with_ellipsis(text: &str, width: usize) -> String {
     result
 }
 
-pub(crate) fn rows_to_lines(rows: &[CardRow], _style: &CardStyle, total_width: u16) -> Vec<Line<'static>> {
+pub(crate) fn rows_to_lines(
+    rows: &[CardRow],
+    _style: &CardStyle,
+    total_width: u16,
+) -> Vec<Line<'static>> {
     if total_width == 0 {
         return Vec::new();
     }

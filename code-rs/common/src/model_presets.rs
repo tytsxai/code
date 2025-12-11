@@ -138,13 +138,11 @@ static PRESETS: Lazy<Vec<ModelPreset>> = Lazy::new(|| {
             supported_reasoning_efforts: &[
                 ReasoningEffortPreset {
                     effort: ReasoningEffort::Low,
-                    description:
-                        "Balances speed with some reasoning; useful for straightforward queries and short explanations",
+                    description: "Balances speed with some reasoning; useful for straightforward queries and short explanations",
                 },
                 ReasoningEffortPreset {
                     effort: ReasoningEffort::Medium,
-                    description:
-                        "Provides a solid balance of reasoning depth and latency for general-purpose tasks",
+                    description: "Provides a solid balance of reasoning depth and latency for general-purpose tasks",
                 },
                 ReasoningEffortPreset {
                     effort: ReasoningEffort::High,
@@ -228,13 +226,11 @@ static PRESETS: Lazy<Vec<ModelPreset>> = Lazy::new(|| {
                 },
                 ReasoningEffortPreset {
                     effort: ReasoningEffort::Low,
-                    description:
-                        "Balances speed with some reasoning; useful for straightforward queries and short explanations",
+                    description: "Balances speed with some reasoning; useful for straightforward queries and short explanations",
                 },
                 ReasoningEffortPreset {
                     effort: ReasoningEffort::Medium,
-                    description:
-                        "Provides a solid balance of reasoning depth and latency for general-purpose tasks",
+                    description: "Provides a solid balance of reasoning depth and latency for general-purpose tasks",
                 },
                 ReasoningEffortPreset {
                     effort: ReasoningEffort::High,
@@ -335,17 +331,16 @@ mod tests {
     #[test]
     fn gpt_5_1_codex_max_hidden_for_api_key_auth() {
         let presets = builtin_model_presets(Some(AuthMode::ApiKey));
-        assert!(presets
-            .iter()
-            .all(|preset| preset.id != "gpt-5.1-codex-max"));
+        assert!(
+            presets
+                .iter()
+                .all(|preset| preset.id != "gpt-5.1-codex-max")
+        );
     }
 
     #[test]
     fn clamp_reasoning_effort_downgrades_to_supported_level() {
-        let clamped = clamp_reasoning_effort_for_model(
-            "gpt-5.1-codex",
-            ReasoningEffort::XHigh,
-        );
+        let clamped = clamp_reasoning_effort_for_model("gpt-5.1-codex", ReasoningEffort::XHigh);
         assert_eq!(clamped, ReasoningEffort::High);
 
         let clamped_minimal =

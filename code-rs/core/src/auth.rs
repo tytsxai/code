@@ -18,10 +18,11 @@ use std::time::Duration;
 
 use code_app_server_protocol::AuthMode;
 
-use crate::token_data::TokenData;
-use crate::token_data::{parse_id_token, PlanType};
-use crate::token_data::KnownPlan;
 use crate::config::resolve_code_path_for_read;
+use crate::token_data::KnownPlan;
+use crate::token_data::PlanType;
+use crate::token_data::TokenData;
+use crate::token_data::parse_id_token;
 use crate::util::backoff;
 
 #[derive(Debug, Clone)]
@@ -96,7 +97,7 @@ impl CodexAuth {
             attempt = attempt.saturating_add(1);
             match try_refresh_token(refresh_token.clone(), &self.client).await {
                 Ok(refresh_response) => {
-                    return self.persist_refresh_response(refresh_response).await
+                    return self.persist_refresh_response(refresh_response).await;
                 }
                 Err(err) => {
                     if err.is_refresh_token_reused() {
@@ -191,10 +192,10 @@ impl CodexAuth {
                         try_refresh_token(tokens.refresh_token.clone(), &self.client),
                     )
                     .await
-        .map_err(|_| {
-            std::io::Error::other("timed out while refreshing OpenAI API key")
-        })?
-        .map_err(|err| std::io::Error::other(err))?;
+                    .map_err(|_| {
+                        std::io::Error::other("timed out while refreshing OpenAI API key")
+                    })?
+                    .map_err(|err| std::io::Error::other(err))?;
 
                     let updated_auth_dot_json = update_tokens(
                         &self.auth_file,
@@ -334,12 +335,8 @@ pub fn login_with_api_key(code_home: &Path, api_key: &str) -> std::io::Result<()
         last_refresh: None,
     };
     write_auth_json(&get_auth_file(code_home), &auth_dot_json)?;
-    let _ = crate::auth_accounts::upsert_api_key_account(
-        code_home,
-        api_key.to_string(),
-        None,
-        true,
-    )?;
+    let _ =
+        crate::auth_accounts::upsert_api_key_account(code_home, api_key.to_string(), None, true)?;
     Ok(())
 }
 
@@ -513,9 +510,7 @@ async fn update_tokens(
 
     if let Some(code_home) = auth_file.parent() {
         if let Some(tokens) = auth_dot_json.tokens.clone() {
-            let last_refresh = auth_dot_json
-                .last_refresh
-                .unwrap_or_else(Utc::now);
+            let last_refresh = auth_dot_json.last_refresh.unwrap_or_else(Utc::now);
             let email = tokens.id_token.email.clone();
             let _ = crate::auth_accounts::upsert_chatgpt_account(
                 code_home,
@@ -604,24 +599,18 @@ fn classify_refresh_failure(status: StatusCode, body: &str) -> RefreshTokenError
                 let message = error
                     .message
                     .unwrap_or_else(|| "refresh token already rotated".to_string());
-                return RefreshTokenError::transient(format!(
-                    "refresh_token_reused: {message}"
-                ));
+                return RefreshTokenError::transient(format!("refresh_token_reused: {message}"));
             }
         }
     }
 
     if let Ok(parsed) = serde_json::from_str::<OAuthErrorBody>(body) {
         if let Some(code) = parsed.error.as_deref() {
-            let description = parsed
-                .error_description
-                .as_deref()
-                .unwrap_or(code)
-                .trim();
+            let description = parsed.error_description.as_deref().unwrap_or(code).trim();
             let formatted = format!("OAuth error ({code}): {description}");
             match code {
                 "invalid_grant" | "invalid_client" | "invalid_scope" => {
-                    return RefreshTokenError::permanent(formatted)
+                    return RefreshTokenError::permanent(formatted);
                 }
                 "access_denied" => {
                     return RefreshTokenError::permanent(formatted);
@@ -712,8 +701,8 @@ mod tests {
     use crate::token_data::KnownPlan;
     use crate::token_data::PlanType;
     use base64::Engine;
-    use reqwest::StatusCode;
     use pretty_assertions::assert_eq;
+    use reqwest::StatusCode;
     use serde::Serialize;
     use serde_json::json;
     use tempfile::tempdir;
@@ -934,7 +923,11 @@ mod tests {
 
     fn assert_permanent(body: &str, status: StatusCode) {
         let err = classify_refresh_failure(status, body);
-        assert!(err.is_permanent(), "expected permanent error, got {:?}", err.kind);
+        assert!(
+            err.is_permanent(),
+            "expected permanent error, got {:?}",
+            err.kind
+        );
     }
 
     fn assert_transient(body: &str, status: StatusCode) {
@@ -1197,10 +1190,8 @@ impl AuthManager {
         if let Ok(mut guard) = self.inner.write() {
             let changed = !AuthManager::auths_equal(&guard.auth, &new_auth);
             guard.auth = new_auth;
-            guard.preferred_auth_mode = env_auth
-                .as_ref()
-                .map(|auth| auth.mode)
-                .unwrap_or(preferred);
+            guard.preferred_auth_mode =
+                env_auth.as_ref().map(|auth| auth.mode).unwrap_or(preferred);
             changed
         } else {
             false

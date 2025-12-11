@@ -4,7 +4,8 @@
 //! detection to help identify when Auto Drive is stuck or behaving unexpectedly.
 
 use std::collections::VecDeque;
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
+use std::hash::Hasher;
 use std::time::Instant;
 
 /// Maximum number of tool calls to track for loop detection.
@@ -85,6 +86,27 @@ pub enum DiagnosticAlert {
     },
     /// Model responses showing repetitive patterns.
     RepetitiveResponse { pattern: String, occurrences: usize },
+    /// Session running slower than threshold.
+    SessionSlow {
+        session_id: String,
+        elapsed_ms: i64,
+        task_id: Option<String>,
+    },
+    /// Session exceeded stuck threshold.
+    SessionStuck {
+        session_id: String,
+        elapsed_ms: i64,
+        task_id: Option<String>,
+    },
+    /// Session task migrated to a new worker.
+    SessionMigrated {
+        from_session: String,
+        to_session: Option<String>,
+        task_id: String,
+        retry_count: i32,
+    },
+    /// Parallel execution configured with low concurrency.
+    LowConcurrency { max_concurrent_agents: i32 },
 }
 
 /// Summary report of diagnostic findings.
@@ -136,6 +158,11 @@ impl DiagnosticsEngine {
         self.token_projection.turns_projected = turns;
     }
 
+    /// Sets the loop detection threshold.
+    pub fn set_loop_threshold(&mut self, threshold: usize) {
+        self.anomaly_threshold.loop_count = threshold;
+    }
+
     /// Records a tool call for analysis.
     pub fn record_tool_call(&mut self, record: ToolCallRecord) {
         if self.tool_call_history.len() >= TOOL_CALL_WINDOW {
@@ -182,9 +209,9 @@ impl DiagnosticsEngine {
         }
 
         let first = &recent[0];
-        let all_same = recent.iter().all(|r| {
-            r.tool_name == first.tool_name && r.arguments_hash == first.arguments_hash
-        });
+        let all_same = recent
+            .iter()
+            .all(|r| r.tool_name == first.tool_name && r.arguments_hash == first.arguments_hash);
 
         if all_same {
             Some(DiagnosticAlert::LoopDetected {
@@ -220,8 +247,8 @@ impl DiagnosticsEngine {
             return None;
         }
 
-        let ratio =
-            self.token_projection.actual_total as f32 / self.token_projection.projected_total as f32;
+        let ratio = self.token_projection.actual_total as f32
+            / self.token_projection.projected_total as f32;
 
         if ratio > self.anomaly_threshold.token_overrun_ratio {
             Some(DiagnosticAlert::TokenOverrun {

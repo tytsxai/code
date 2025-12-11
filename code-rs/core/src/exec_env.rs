@@ -26,7 +26,8 @@ where
         ShellEnvironmentPolicyInherit::None => HashMap::new(),
         ShellEnvironmentPolicyInherit::Core => {
             const CORE_VARS: &[&str] = &[
-                "HOME", "LOGNAME", "PATH", "PATHEXT", "SHELL", "USER", "USERNAME", "TMPDIR", "TEMP", "TMP",
+                "HOME", "LOGNAME", "PATH", "PATHEXT", "SHELL", "USER", "USERNAME", "TMPDIR",
+                "TEMP", "TMP",
             ];
             let allow: HashSet<&str> = CORE_VARS.iter().copied().collect();
             vars.into_iter()
@@ -62,12 +63,10 @@ where
 
     // Step 4.5 – Disable interactive pagers by default so shell calls do not
     // block on `less` (common for `gh`/`git`). Respect explicit overrides.
-    for (key, val) in [
-        ("PAGER", "cat"),
-        ("GIT_PAGER", "cat"),
-        ("GH_PAGER", "cat"),
-    ] {
-        env_map.entry(key.to_string()).or_insert_with(|| val.to_string());
+    for (key, val) in [("PAGER", "cat"), ("GIT_PAGER", "cat"), ("GH_PAGER", "cat")] {
+        env_map
+            .entry(key.to_string())
+            .or_insert_with(|| val.to_string());
     }
 
     // Step 5 – If include_only is non-empty, keep *only* the matching vars.

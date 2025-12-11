@@ -237,7 +237,10 @@ mod tests {
                 .arg("init")
                 .status()
                 .expect("git command");
-            assert!(fallback.success(), "git init failed without --initial-branch");
+            assert!(
+                fallback.success(),
+                "git init failed without --initial-branch"
+            );
 
             let set_head = Command::new("git")
                 .current_dir(repo)

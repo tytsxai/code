@@ -11,36 +11,37 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use mcp_types::CallToolResult;
-use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 use serde_bytes::ByteBuf;
 use strum_macros::Display;
 use uuid::Uuid;
 
+use crate::client_common::TextFormat;
 use crate::config_types::ReasoningEffort as ReasoningEffortConfig;
 use crate::config_types::ReasoningSummary as ReasoningSummaryConfig;
 use crate::config_types::TextVerbosity as TextVerbosityConfig;
 use crate::message_history::HistoryEntry;
 use crate::model_provider_info::ModelProviderInfo;
-use crate::client_common::TextFormat;
 use crate::parse_command::ParsedCommand;
 use crate::plan_tool::UpdatePlanArgs;
 
 // Re-export review types from the shared protocol crate so callers can use
 // `code_core::protocol::ReviewFinding` and friends.
+pub use code_protocol::protocol::ConversationPathResponseEvent;
+pub use code_protocol::protocol::ENVIRONMENT_CONTEXT_OPEN_TAG;
+pub use code_protocol::protocol::ExitedReviewModeEvent;
+pub use code_protocol::protocol::GitInfo;
+pub use code_protocol::protocol::ListCustomPromptsResponseEvent;
 pub use code_protocol::protocol::ReviewCodeLocation;
+pub use code_protocol::protocol::ReviewContextMetadata;
 pub use code_protocol::protocol::ReviewFinding;
 pub use code_protocol::protocol::ReviewLineRange;
 pub use code_protocol::protocol::ReviewOutputEvent;
-pub use code_protocol::protocol::{ReviewContextMetadata, ReviewRequest};
-pub use code_protocol::protocol::GitInfo;
+pub use code_protocol::protocol::ReviewRequest;
 pub use code_protocol::protocol::RolloutItem;
 pub use code_protocol::protocol::RolloutLine;
-pub use code_protocol::protocol::ConversationPathResponseEvent;
-pub use code_protocol::protocol::ListCustomPromptsResponseEvent;
-pub use code_protocol::protocol::ENVIRONMENT_CONTEXT_OPEN_TAG;
-pub use code_protocol::protocol::ExitedReviewModeEvent;
 
 /// Submission Queue Entry - requests from user
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -140,9 +141,7 @@ pub enum Op {
     },
 
     /// Set a one-off text format to apply on the next turn.
-    SetNextTextFormat {
-        format: TextFormat,
-    },
+    SetNextTextFormat { format: TextFormat },
 
     /// Approve a command execution
     ExecApproval {
@@ -170,10 +169,7 @@ pub enum Op {
     },
 
     /// Update a specific validation tool toggle for the session.
-    UpdateValidationTool {
-        name: String,
-        enable: bool,
-    },
+    UpdateValidationTool { name: String, enable: bool },
 
     /// Update a validation group toggle for the session.
     UpdateValidationGroup {
@@ -191,14 +187,10 @@ pub enum Op {
     },
 
     /// Persist the full chat history snapshot for the current session.
-    PersistHistorySnapshot {
-        snapshot: serde_json::Value,
-    },
+    PersistHistorySnapshot { snapshot: serde_json::Value },
 
     /// Execute a project-scoped custom command defined in configuration.
-    RunProjectCommand {
-        name: String,
-    },
+    RunProjectCommand { name: String },
 
     /// Internally queue a developer-role message to be included in the next turn.
     AddPendingInputDeveloper {
@@ -304,7 +296,9 @@ pub enum SandboxPolicy {
 }
 
 // Serde helper: default to true for flags where we want historical permissive behavior.
-pub(crate) const fn default_true_bool() -> bool { true }
+pub(crate) const fn default_true_bool() -> bool {
+    true
+}
 
 /// A writable root path accompanied by a list of subpaths that should remain
 /// read‑only even when the root is writable. This is primarily used to ensure
@@ -513,7 +507,6 @@ pub fn event_msg_to_protocol(msg: &EventMsg) -> Option<code_protocol::protocol::
     }
 }
 
-
 pub fn event_msg_from_protocol(msg: &code_protocol::protocol::EventMsg) -> Option<EventMsg> {
     match msg {
         code_protocol::protocol::EventMsg::TokenCount(payload) => {
@@ -534,10 +527,7 @@ pub fn event_msg_from_protocol(msg: &code_protocol::protocol::EventMsg) -> Optio
     }
 }
 
-
-pub fn order_meta_to_protocol(
-    order: &OrderMeta,
-) -> code_protocol::protocol::OrderMeta {
+pub fn order_meta_to_protocol(order: &OrderMeta) -> code_protocol::protocol::OrderMeta {
     code_protocol::protocol::OrderMeta {
         request_ordinal: order.request_ordinal,
         output_index: order.output_index,
@@ -545,9 +535,7 @@ pub fn order_meta_to_protocol(
     }
 }
 
-pub fn order_meta_from_protocol(
-    order: &code_protocol::protocol::OrderMeta,
-) -> OrderMeta {
+pub fn order_meta_from_protocol(order: &code_protocol::protocol::OrderMeta) -> OrderMeta {
     OrderMeta {
         request_ordinal: order.request_ordinal,
         output_index: order.output_index,
@@ -555,15 +543,11 @@ pub fn order_meta_from_protocol(
     }
 }
 
-
 pub fn recorded_event_to_protocol(
     event: &RecordedEvent,
 ) -> Option<code_protocol::protocol::RecordedEvent> {
     let msg = event_msg_to_protocol(&event.msg)?;
-    let order = event
-        .order
-        .as_ref()
-        .map(order_meta_to_protocol);
+    let order = event.order.as_ref().map(order_meta_to_protocol);
     Some(code_protocol::protocol::RecordedEvent {
         id: event.id.clone(),
         event_seq: event.event_seq,
@@ -571,7 +555,6 @@ pub fn recorded_event_to_protocol(
         msg,
     })
 }
-
 
 pub fn recorded_event_from_protocol(
     src: code_protocol::protocol::RecordedEvent,

@@ -125,6 +125,13 @@ flowchart LR
 
 配置通过 `[auto_drive]` 节启用：`checkpoint_enabled`、`diagnostics_enabled`、`token_budget`、`turn_limit`、`audit_enabled` 等。
 
+#### 高吞吐多智能体（SessionPool / TaskPipeline）
+- **SessionPool** (`session_pool.rs`)：min=5 / max=20 预热、`scale_up/down_threshold=0.8/0.3` 自扩缩，慢/卡死检测生成 `SessionSlow/SessionStuck/SessionMigrated` 诊断事件并写审计；队列接近 `max_sessions*10` 发 `BackpressureWarning/Exceeded`。
+- **ParallelExecution** (`parallel_execution.rs`)：Semaphore 限制 `max_concurrent_agents`（默认 8），低于 8 写入低并发告警；按角色前缀组装提示并合并结果。
+- **TaskPipeline + RoleChannel**：阶段定义驱动角色任务，WorkComplete/ErrorOccurred/Guidance/StageAdvance 消息推进阶段，失败会中断流水线。
+- **外部记忆与进度日志**：`ai/feature_list.json`（foreman 兼容字段 id/description/module/priority/status/acceptance/testRequirements/tags/version/tddMode/verification），`ai/progress.log` 行格式 `timestamp | type | status | tests | summary | note`，EnhancedCoordinator 在 STEP/CHANGE/VERIFY/REPLAN 时追加。
+- **选择性测试/TDD**：`selective_tests.rs` 基于 `git diff` + backlog 生成测试计划，strict 模式缺测或失败会生成带 reason 的 VerificationResult 并通过 `evaluate_and_record_verification` 写回 backlog/进度日志。更多细节见 `docs/architecture/high_throughput.md`。
+
 ### MCP / app-server
 - `app-server` 作为 stdin/stdout JSON-RPC 网关，使用 `protocol::mcp_protocol` 类型。
 - `code_message_processor` 将 `newConversation` / `sendUserTurn` 等映射到核心 `Op`，监听事件再回推 JSON-RPC 通知。

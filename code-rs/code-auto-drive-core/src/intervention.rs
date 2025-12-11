@@ -29,6 +29,8 @@ pub enum BudgetAlertKind {
     TokenExceeded,
     TurnLimitReached,
     DurationExceeded,
+    BackpressureWarning,
+    BackpressureExceeded,
 }
 
 impl From<&BudgetAlert> for BudgetAlertKind {
@@ -38,6 +40,8 @@ impl From<&BudgetAlert> for BudgetAlertKind {
             BudgetAlert::TokenExceeded { .. } => Self::TokenExceeded,
             BudgetAlert::TurnLimitReached { .. } => Self::TurnLimitReached,
             BudgetAlert::DurationExceeded { .. } => Self::DurationExceeded,
+            BudgetAlert::BackpressureWarning { .. } => Self::BackpressureWarning,
+            BudgetAlert::BackpressureExceeded { .. } => Self::BackpressureExceeded,
         }
     }
 }
@@ -49,6 +53,10 @@ pub enum DiagnosticAlertKind {
     GoalDrift,
     TokenOverrun,
     RepetitiveResponse,
+    SessionSlow,
+    SessionStuck,
+    SessionMigrated,
+    LowConcurrency,
 }
 
 impl From<&DiagnosticAlert> for DiagnosticAlertKind {
@@ -58,6 +66,10 @@ impl From<&DiagnosticAlert> for DiagnosticAlertKind {
             DiagnosticAlert::GoalDrift { .. } => Self::GoalDrift,
             DiagnosticAlert::TokenOverrun { .. } => Self::TokenOverrun,
             DiagnosticAlert::RepetitiveResponse { .. } => Self::RepetitiveResponse,
+            DiagnosticAlert::SessionSlow { .. } => Self::SessionSlow,
+            DiagnosticAlert::SessionStuck { .. } => Self::SessionStuck,
+            DiagnosticAlert::SessionMigrated { .. } => Self::SessionMigrated,
+            DiagnosticAlert::LowConcurrency { .. } => Self::LowConcurrency,
         }
     }
 }
@@ -97,7 +109,10 @@ pub enum InterventionAction {
     /// Stop the session.
     Stop,
     /// Extend budget and continue.
-    ExtendBudget { additional_tokens: Option<u64>, additional_turns: Option<u32> },
+    ExtendBudget {
+        additional_tokens: Option<u64>,
+        additional_turns: Option<u32>,
+    },
 }
 
 /// Handler for managing intervention state and transitions.
@@ -213,20 +228,36 @@ impl InterventionHandler {
                     BudgetAlertKind::TokenExceeded => "Token budget exceeded".to_string(),
                     BudgetAlertKind::TurnLimitReached => "Turn limit reached".to_string(),
                     BudgetAlertKind::DurationExceeded => "Duration limit exceeded".to_string(),
+                    BudgetAlertKind::BackpressureWarning => {
+                        "Session pool backpressure warning".to_string()
+                    }
+                    BudgetAlertKind::BackpressureExceeded => {
+                        "Session pool backpressure exceeded".to_string()
+                    }
                 },
                 InterventionReason::DiagnosticReview { alert } => match alert {
                     DiagnosticAlertKind::LoopDetected => "Loop detected".to_string(),
                     DiagnosticAlertKind::GoalDrift => "Goal drift detected".to_string(),
                     DiagnosticAlertKind::TokenOverrun => "Token usage anomaly".to_string(),
                     DiagnosticAlertKind::RepetitiveResponse => "Repetitive responses".to_string(),
+                    DiagnosticAlertKind::SessionSlow => "Session running slowly".to_string(),
+                    DiagnosticAlertKind::SessionStuck => "Session stuck".to_string(),
+                    DiagnosticAlertKind::SessionMigrated => "Session migrated".to_string(),
+                    DiagnosticAlertKind::LowConcurrency => {
+                        "Parallel execution concurrency is below target".to_string()
+                    }
                 },
             }),
             InterventionState::EditingPrompt { .. } => Some("Editing prompt...".to_string()),
             InterventionState::ModifyingGoal { .. } => Some("Modifying goal...".to_string()),
             InterventionState::Resolved { action } => Some(match action {
                 InterventionAction::Resume => "Resuming...".to_string(),
-                InterventionAction::ResumeWithPrompt { .. } => "Resuming with new prompt...".to_string(),
-                InterventionAction::ResumeWithGoal { .. } => "Resuming with new goal...".to_string(),
+                InterventionAction::ResumeWithPrompt { .. } => {
+                    "Resuming with new prompt...".to_string()
+                }
+                InterventionAction::ResumeWithGoal { .. } => {
+                    "Resuming with new goal...".to_string()
+                }
                 InterventionAction::SkipStep => "Skipping step...".to_string(),
                 InterventionAction::Stop => "Stopping...".to_string(),
                 InterventionAction::ExtendBudget { .. } => "Extending budget...".to_string(),
@@ -263,14 +294,19 @@ mod tests {
         assert!(handler.is_awaiting_input());
         assert!(matches!(
             handler.state(),
-            InterventionState::Pending { reason: InterventionReason::UserRequested }
+            InterventionState::Pending {
+                reason: InterventionReason::UserRequested
+            }
         ));
     }
 
     #[test]
     fn test_budget_intervention() {
         let mut handler = InterventionHandler::new();
-        let alert = BudgetAlert::TokenExceeded { used: 1000, limit: 1000 };
+        let alert = BudgetAlert::TokenExceeded {
+            used: 1000,
+            limit: 1000,
+        };
 
         handler.request_for_budget(&alert);
 
@@ -368,7 +404,10 @@ mod tests {
     #[test]
     fn test_extend_budget() {
         let mut handler = InterventionHandler::new();
-        let alert = BudgetAlert::TokenExceeded { used: 1000, limit: 1000 };
+        let alert = BudgetAlert::TokenExceeded {
+            used: 1000,
+            limit: 1000,
+        };
 
         handler.request_for_budget(&alert);
         handler.resolve(InterventionAction::ExtendBudget {
@@ -379,7 +418,10 @@ mod tests {
         let action = handler.take_action();
         assert!(matches!(
             action,
-            Some(InterventionAction::ExtendBudget { additional_tokens: Some(5000), .. })
+            Some(InterventionAction::ExtendBudget {
+                additional_tokens: Some(5000),
+                ..
+            })
         ));
     }
 
@@ -390,7 +432,10 @@ mod tests {
         handler.set_clarification("Please focus on the main task".to_string());
 
         let clarification = handler.take_clarification();
-        assert_eq!(clarification, Some("Please focus on the main task".to_string()));
+        assert_eq!(
+            clarification,
+            Some("Please focus on the main task".to_string())
+        );
         assert!(handler.take_clarification().is_none());
     }
 

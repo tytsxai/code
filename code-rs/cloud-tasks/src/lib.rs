@@ -7,18 +7,18 @@ mod ui;
 pub mod util;
 pub use cli::Cli;
 
+use code_tui::public_widgets::composer_input::ComposerAction;
 use std::io::IsTerminal;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 use std::time::Instant;
-use unicode_segmentation::UnicodeSegmentation;
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::info;
+use tracing_subscriber::EnvFilter;
 use tracing_subscriber::filter::filter_fn;
 use tracing_subscriber::prelude::*;
-use tracing_subscriber::EnvFilter;
-use code_tui::public_widgets::composer_input::ComposerAction;
+use unicode_segmentation::UnicodeSegmentation;
 use util::append_error_log;
 use util::set_user_agent_suffix;
 
@@ -194,9 +194,7 @@ pub async fn run_main(cli: Cli, _code_linux_sandbox_exe: Option<PathBuf>) -> any
                 .with(otel_layer)
                 .try_init()
         }
-        None => tracing_subscriber::registry()
-            .with(fmt_layer)
-            .try_init(),
+        None => tracing_subscriber::registry().with(fmt_layer).try_init(),
     };
 
     info!("Launching Cloud Tasks list UI");
@@ -1554,8 +1552,8 @@ async fn run_submit(args: crate::cli::SubmitArgs) -> anyhow::Result<()> {
         let base_url = std::env::var("CODEX_CLOUD_TASKS_BASE_URL")
             .unwrap_or_else(|_| "https://chatgpt.com/backend-api".to_string());
         let ua = code_core::default_client::get_code_user_agent(None);
-        let mut http = code_cloud_tasks_client::HttpClient::new(base_url.clone())?
-            .with_user_agent(ua);
+        let mut http =
+            code_cloud_tasks_client::HttpClient::new(base_url.clone())?.with_user_agent(ua);
 
         // Attach ChatGPT auth (required in production)
         let _token = match code_core::config::find_code_home()
@@ -1594,7 +1592,9 @@ async fn run_submit(args: crate::cli::SubmitArgs) -> anyhow::Result<()> {
     };
 
     // Resolve target environment id
-    let env_id = if let Some(e) = args.env.clone() { e } else {
+    let env_id = if let Some(e) = args.env.clone() {
+        e
+    } else {
         let base_url = util::normalize_base_url(
             &std::env::var("CODEX_CLOUD_TASKS_BASE_URL")
                 .unwrap_or_else(|_| "https://chatgpt.com/backend-api".to_string()),
@@ -1628,7 +1628,8 @@ async fn run_submit(args: crate::cli::SubmitArgs) -> anyhow::Result<()> {
     }
 
     // Poll for completion and output a friendly summary when done
-    use tokio::time::{sleep, Duration};
+    use tokio::time::Duration;
+    use tokio::time::sleep;
     eprintln!("Created task {}; waiting for completion…", created.id.0);
     let task_id = created.id;
     let mut seen_msgs = 0usize;
@@ -1648,10 +1649,13 @@ async fn run_submit(args: crate::cli::SubmitArgs) -> anyhow::Result<()> {
         match text.attempt_status {
             S::Completed => {
                 // Try to get a diff snapshot if available
-                let diff_opt = code_cloud_tasks_client::CloudBackend::get_task_diff(&*backend, task_id.clone())
-                    .await
-                    .ok()
-                    .flatten();
+                let diff_opt = code_cloud_tasks_client::CloudBackend::get_task_diff(
+                    &*backend,
+                    task_id.clone(),
+                )
+                .await
+                .ok()
+                .flatten();
 
                 // Build final output as plain text for the agent result
                 let mut out = String::new();
@@ -1806,8 +1810,8 @@ fn pretty_lines_from_error(raw: &str) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
-    use code_tui::public_widgets::composer_input::ComposerAction;
     use code_tui::ComposerInput;
+    use code_tui::public_widgets::composer_input::ComposerAction;
     use crossterm::event::KeyCode;
     use crossterm::event::KeyEvent;
     use crossterm::event::KeyModifiers;

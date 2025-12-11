@@ -7,15 +7,32 @@
 mod tests {
     use proptest::prelude::*;
 
-    use crate::budget::{BudgetAlert, BudgetConfig, BudgetController};
-    use crate::checkpoint::{CheckpointManager, TokenUsage};
-    use crate::compaction::{CompactionConfig, CompactionEngine, ItemClassification, ItemImportance};
-    use crate::diagnostics::{DiagnosticAlert, DiagnosticsEngine, ToolCallRecord, ToolOutcome};
-    use crate::progress::{AutoDrivePhase, ProgressCollector, ProgressViewModel};
-    use crate::retry_enhanced::{AutoDriveError, FailureCounter, RetryStrategy};
-    use crate::scheduler::{AgentId, AgentScheduler, AgentTask};
-    use crate::telemetry::{SessionOutcome, TelemetryCollector, TurnOutcome};
     use crate::AutoTurnAgentsTiming;
+    use crate::budget::BudgetAlert;
+    use crate::budget::BudgetConfig;
+    use crate::budget::BudgetController;
+    use crate::checkpoint::CheckpointManager;
+    use crate::checkpoint::TokenUsage;
+    use crate::compaction::CompactionConfig;
+    use crate::compaction::CompactionEngine;
+    use crate::compaction::ItemClassification;
+    use crate::compaction::ItemImportance;
+    use crate::diagnostics::DiagnosticAlert;
+    use crate::diagnostics::DiagnosticsEngine;
+    use crate::diagnostics::ToolCallRecord;
+    use crate::diagnostics::ToolOutcome;
+    use crate::progress::AutoDrivePhase;
+    use crate::progress::ProgressCollector;
+    use crate::progress::ProgressViewModel;
+    use crate::retry_enhanced::AutoDriveError;
+    use crate::retry_enhanced::FailureCounter;
+    use crate::retry_enhanced::RetryStrategy;
+    use crate::scheduler::AgentId;
+    use crate::scheduler::AgentScheduler;
+    use crate::scheduler::AgentTask;
+    use crate::telemetry::SessionOutcome;
+    use crate::telemetry::TelemetryCollector;
+    use crate::telemetry::TurnOutcome;
 
     // =========================================================================
     // Property 1: Checkpoint Round-Trip Consistency
@@ -87,7 +104,7 @@ mod tests {
             prop_assert!(manager.validate(&checkpoint).unwrap());
 
             // Tampered checkpoint should fail validation
-            let mut tampered = checkpoint.clone();
+            let mut tampered = checkpoint;
             tampered.goal = tampered_goal;
             prop_assert!(!manager.validate(&tampered).unwrap());
         }
@@ -551,9 +568,9 @@ mod tests {
                 AutoDrivePhase::Stopped,
             ];
 
-            let phase = phases[phase_index % phases.len()].clone();
+            let phase = phases[phase_index % phases.len()];
             let mut model = ProgressViewModel::new();
-            model.set_phase(phase.clone());
+            model.set_phase(phase);
 
             // Verify phase is set correctly
             prop_assert_eq!(model.phase, phase);

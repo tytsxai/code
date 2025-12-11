@@ -1,6 +1,7 @@
 use serde::Deserialize;
 use serde::Serialize;
-use serde::ser::{SerializeStruct, Serializer};
+use serde::ser::SerializeStruct;
+use serde::ser::Serializer;
 use serde_json::Value as JsonValue;
 use serde_json::json;
 use std::collections::BTreeMap;
@@ -11,9 +12,9 @@ use crate::model_family::ModelFamily;
 use crate::plan_tool::PLAN_TOOL;
 use crate::protocol::AskForApproval;
 use crate::protocol::SandboxPolicy;
-use crate::tool_apply_patch::{
-    create_apply_patch_freeform_tool, create_apply_patch_json_tool, ApplyPatchToolType,
-};
+use crate::tool_apply_patch::ApplyPatchToolType;
+use crate::tool_apply_patch::create_apply_patch_freeform_tool;
+use crate::tool_apply_patch::create_apply_patch_json_tool;
 // apply_patch tools are not currently surfaced; keep imports out to avoid warnings.
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -251,7 +252,8 @@ impl Serialize for JsonSchema {
     {
         match self {
             JsonSchema::Boolean { description } => {
-                let mut state = serializer.serialize_struct("JsonSchema", if description.is_some() { 2 } else { 1 })?;
+                let mut state = serializer
+                    .serialize_struct("JsonSchema", if description.is_some() { 2 } else { 1 })?;
                 state.serialize_field("type", "boolean")?;
                 if let Some(desc) = description {
                     state.serialize_field("description", desc)?;
@@ -280,7 +282,8 @@ impl Serialize for JsonSchema {
                 state.end()
             }
             JsonSchema::Number { description } => {
-                let mut state = serializer.serialize_struct("JsonSchema", if description.is_some() { 2 } else { 1 })?;
+                let mut state = serializer
+                    .serialize_struct("JsonSchema", if description.is_some() { 2 } else { 1 })?;
                 state.serialize_field("type", "number")?;
                 if let Some(desc) = description {
                     state.serialize_field("description", desc)?;
@@ -722,7 +725,6 @@ pub fn get_openai_tools(
         tools.push(tool);
     }
 
-
     if let Some(mcp_tools) = mcp_tools {
         // Ensure deterministic ordering to maximize prompt cache hits.
         // HashMap iteration order is non-deterministic, so sort by fully-qualified tool name.
@@ -1011,7 +1013,10 @@ mod tests {
                     properties: BTreeMap::from([
                         (
                             "string_argument".to_string(),
-                            JsonSchema::String { description: None, allowed_values: None }
+                            JsonSchema::String {
+                                description: None,
+                                allowed_values: None
+                            }
                         ),
                         (
                             "number_argument".to_string(),
@@ -1023,7 +1028,10 @@ mod tests {
                                 properties: BTreeMap::from([
                                     (
                                         "string_property".to_string(),
-                                        JsonSchema::String { description: None, allowed_values: None }
+                                        JsonSchema::String {
+                                            description: None,
+                                            allowed_values: None
+                                        }
                                     ),
                                     (
                                         "number_property".to_string(),
@@ -1131,7 +1139,10 @@ mod tests {
                     properties: BTreeMap::from([
                         (
                             "string_argument".to_string(),
-                            JsonSchema::String { description: None, allowed_values: None }
+                            JsonSchema::String {
+                                description: None,
+                                allowed_values: None
+                            }
                         ),
                         (
                             "number_argument".to_string(),
@@ -1143,7 +1154,10 @@ mod tests {
                                 properties: BTreeMap::from([
                                     (
                                         "string_property".to_string(),
-                                        JsonSchema::String { description: None, allowed_values: None }
+                                        JsonSchema::String {
+                                            description: None,
+                                            allowed_values: None
+                                        }
                                     ),
                                     (
                                         "number_property".to_string(),
@@ -1158,7 +1172,10 @@ mod tests {
                                     JsonSchema::Object {
                                         properties: BTreeMap::from([(
                                             "addtl_prop".to_string(),
-                                            JsonSchema::String { description: None, allowed_values: None }
+                                            JsonSchema::String {
+                                                description: None,
+                                                allowed_values: None
+                                            }
                                         ),]),
                                         required: Some(vec!["addtl_prop".to_string(),]),
                                         additional_properties: Some(false.into()),
@@ -1397,7 +1414,10 @@ mod tests {
                     properties: BTreeMap::from([(
                         "tags".to_string(),
                         JsonSchema::Array {
-                            items: Box::new(JsonSchema::String { description: None, allowed_values: None }),
+                            items: Box::new(JsonSchema::String {
+                                description: None,
+                                allowed_values: None
+                            }),
                             description: None
                         }
                     )]),
@@ -1467,7 +1487,10 @@ mod tests {
                 parameters: JsonSchema::Object {
                     properties: BTreeMap::from([(
                         "value".to_string(),
-                        JsonSchema::String { description: None, allowed_values: None }
+                        JsonSchema::String {
+                            description: None,
+                            allowed_values: None
+                        }
                     )]),
                     required: None,
                     additional_properties: None,
@@ -1603,8 +1626,7 @@ fn create_browser_tool(browser_enabled: bool) -> OpenAiTool {
         "x".to_string(),
         JsonSchema::Number {
             description: Some(
-                "For actions=click/move/inspect: absolute X coordinate; use with 'y'."
-                    .to_string(),
+                "For actions=click/move/inspect: absolute X coordinate; use with 'y'.".to_string(),
             ),
         },
     );
@@ -1612,8 +1634,7 @@ fn create_browser_tool(browser_enabled: bool) -> OpenAiTool {
         "y".to_string(),
         JsonSchema::Number {
             description: Some(
-                "For actions=click/move/inspect: absolute Y coordinate; use with 'x'."
-                    .to_string(),
+                "For actions=click/move/inspect: absolute Y coordinate; use with 'x'.".to_string(),
             ),
         },
     );
@@ -1655,7 +1676,8 @@ fn create_browser_tool(browser_enabled: bool) -> OpenAiTool {
         "code".to_string(),
         JsonSchema::String {
             description: Some(
-                "For action=javascript: JavaScript source to execute in the browser context.".to_string(),
+                "For action=javascript: JavaScript source to execute in the browser context."
+                    .to_string(),
             ),
             allowed_values: None,
         },
@@ -1663,7 +1685,9 @@ fn create_browser_tool(browser_enabled: bool) -> OpenAiTool {
     properties.insert(
         "direction".to_string(),
         JsonSchema::String {
-            description: Some("For action=history: history direction ('back' or 'forward').".to_string()),
+            description: Some(
+                "For action=history: history direction ('back' or 'forward').".to_string(),
+            ),
             allowed_values: None,
         },
     );
@@ -1680,7 +1704,8 @@ fn create_browser_tool(browser_enabled: bool) -> OpenAiTool {
         "lines".to_string(),
         JsonSchema::Number {
             description: Some(
-                "For action=console: optional number of recent console lines to return.".to_string(),
+                "For action=console: optional number of recent console lines to return."
+                    .to_string(),
             ),
         },
     );
@@ -1705,7 +1730,9 @@ fn create_browser_tool(browser_enabled: bool) -> OpenAiTool {
     properties.insert(
         "target".to_string(),
         JsonSchema::String {
-            description: Some("For action=cdp: target session ('page' default or 'browser').".to_string()),
+            description: Some(
+                "For action=cdp: target session ('page' default or 'browser').".to_string(),
+            ),
             allowed_values: None,
         },
     );
@@ -1713,7 +1740,8 @@ fn create_browser_tool(browser_enabled: bool) -> OpenAiTool {
         "timeout_ms".to_string(),
         JsonSchema::Number {
             description: Some(
-                "For action=fetch: optional timeout in milliseconds for the HTTP request.".to_string(),
+                "For action=fetch: optional timeout in milliseconds for the HTTP request."
+                    .to_string(),
             ),
         },
     );

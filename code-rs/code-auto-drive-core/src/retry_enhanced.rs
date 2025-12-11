@@ -326,7 +326,10 @@ mod tests {
 
         let network = AutoDriveError::network("timeout");
         let strategy = RetryStrategy::for_error(&network);
-        assert_eq!(strategy.base_delay, Duration::from_secs(NETWORK_BASE_DELAY_SECS));
+        assert_eq!(
+            strategy.base_delay,
+            Duration::from_secs(NETWORK_BASE_DELAY_SECS)
+        );
         assert_eq!(strategy.max_attempts, 5);
     }
 

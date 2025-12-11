@@ -3,11 +3,14 @@
 //! This module provides background cleanup functionality that removes
 //! old agent-created branches that are no longer needed.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::path::PathBuf;
 use std::process::Command;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use std::time::Instant;
 use tokio::sync::Mutex;
-use tracing::{debug, warn};
+use tracing::debug;
+use tracing::warn;
 
 /// Minimum interval between cleanup runs to avoid excessive git operations.
 const MIN_CLEANUP_INTERVAL: Duration = Duration::from_secs(300); // 5 minutes
@@ -68,7 +71,10 @@ fn cleanup_branches_sync(workdir: &Path) -> Result<(), String> {
         .map_err(|e| format!("Failed to list branches in {:?}: {}", workdir, e))?;
 
     if !output.status.success() {
-        debug!("Skipping branch cleanup: {:?} is not a git repository", workdir);
+        debug!(
+            "Skipping branch cleanup: {:?} is not a git repository",
+            workdir
+        );
         return Ok(()); // Not in a git repo, skip
     }
 

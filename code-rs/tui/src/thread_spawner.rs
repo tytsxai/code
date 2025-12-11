@@ -1,4 +1,5 @@
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering;
 
 const STACK_SIZE_BYTES: usize = 256 * 1024;
 const MAX_BACKGROUND_THREADS: usize = 32;
@@ -23,6 +24,17 @@ impl Drop for ThreadCountGuard {
 /// a descriptive, namespaced thread name. Keeps a simple global cap to avoid
 /// runaway spawns when review flows create timers repeatedly.
 pub(crate) fn spawn_lightweight<F>(name: &str, f: F) -> Option<std::thread::JoinHandle<()>>
+where
+    F: FnOnce() + Send + 'static,
+{
+    spawn_with_stack(name, STACK_SIZE_BYTES, f)
+}
+
+pub(crate) fn spawn_with_stack<F>(
+    name: &str,
+    stack_size_bytes: usize,
+    f: F,
+) -> Option<std::thread::JoinHandle<()>>
 where
     F: FnOnce() + Send + 'static,
 {
@@ -51,7 +63,7 @@ where
     let thread_name = format!("code-{name}");
     let builder = std::thread::Builder::new()
         .name(thread_name)
-        .stack_size(STACK_SIZE_BYTES);
+        .stack_size(stack_size_bytes);
 
     match builder.spawn(move || {
         let _guard = ThreadCountGuard::new();

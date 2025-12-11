@@ -1,6 +1,8 @@
 use super::*;
-use std::cell::{Cell, RefCell};
-use std::time::{Duration, Instant};
+use std::cell::Cell;
+use std::cell::RefCell;
+use std::time::Duration;
+use std::time::Instant;
 
 pub(crate) struct AnimatedWelcomeCell {
     start_time: Instant,
@@ -101,19 +103,24 @@ impl HistoryCell for AnimatedWelcomeCell {
             return;
         }
 
-        let current_variant = crate::glitch_animation::intro_art_size_for_area(area.width, area.height);
+        let current_variant =
+            crate::glitch_animation::intro_art_size_for_area(area.width, area.height);
         let variant_changed = self.variant.get() != Some(current_variant);
         if variant_changed {
             self.variant.set(Some(current_variant));
             self.locked_height
-                .set(Some(crate::glitch_animation::intro_art_height(current_variant)));
+                .set(Some(crate::glitch_animation::intro_art_height(
+                    current_variant,
+                )));
             *self.fade_start.borrow_mut() = None;
             self.faded_out.set(false);
             self.completed.set(true);
         } else if self.variant.get().is_none() {
             self.variant.set(Some(current_variant));
             self.locked_height
-                .set(Some(crate::glitch_animation::intro_art_height(current_variant)));
+                .set(Some(crate::glitch_animation::intro_art_height(
+                    current_variant,
+                )));
         }
 
         let variant_for_render = current_variant;

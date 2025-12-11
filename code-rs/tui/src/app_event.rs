@@ -1,18 +1,18 @@
+use crate::streaming::StreamKind;
 use code_core::config_types::ReasoningEffort;
 use code_core::config_types::TextVerbosity;
 use code_core::config_types::ThemeName;
+use code_core::git_info::CommitLogEntry;
+use code_core::protocol::ApprovedCommandMatchKind;
 use code_core::protocol::Event;
 use code_core::protocol::OrderMeta;
-use code_core::protocol::ValidationGroup;
-use code_core::protocol::ApprovedCommandMatchKind;
-use code_core::protocol::TokenUsage;
-use code_core::git_info::CommitLogEntry;
 use code_core::protocol::ReviewContextMetadata;
+use code_core::protocol::TokenUsage;
+use code_core::protocol::ValidationGroup;
 use code_file_search::FileMatch;
 use crossterm::event::KeyEvent;
 use crossterm::event::MouseEvent;
 use ratatui::text::Line;
-use crate::streaming::StreamKind;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ModelSelectionKind {
@@ -25,18 +25,22 @@ use crate::history::state::HistorySnapshot;
 use std::time::Duration;
 use uuid::Uuid;
 
-use code_git_tooling::{GhostCommit, GitToolingError};
-use code_cloud_tasks_client::{ApplyOutcome, CloudTaskError, CreatedTask, TaskSummary};
+use code_cloud_tasks_client::ApplyOutcome;
+use code_cloud_tasks_client::CloudTaskError;
+use code_cloud_tasks_client::CreatedTask;
+use code_cloud_tasks_client::TaskSummary;
+use code_git_tooling::GhostCommit;
+use code_git_tooling::GitToolingError;
 
 use crate::app::ChatWidgetArgs;
 use crate::chrome_launch::ChromeLaunchOption;
+use crate::cloud_tasks_service::CloudEnvironment;
+use crate::resume::discovery::ResumeCandidate;
 use crate::slash_command::SlashCommand;
 use code_protocol::models::ResponseItem;
 use std::fmt;
 use std::path::PathBuf;
 use std::sync::mpsc::Sender as StdSender;
-use crate::cloud_tasks_service::CloudEnvironment;
-use crate::resume::discovery::ResumeCandidate;
 
 /// Wrapper to allow including non-Debug types in Debug enums without leaking internals.
 pub(crate) struct Redacted<T>(pub T);
@@ -65,8 +69,14 @@ pub(crate) struct TerminalLaunch {
 
 #[derive(Debug, Clone)]
 pub(crate) enum TerminalRunEvent {
-    Chunk { data: Vec<u8>, _is_stderr: bool },
-    Exit { exit_code: Option<i32>, _duration: Duration },
+    Chunk {
+        data: Vec<u8>,
+        _is_stderr: bool,
+    },
+    Exit {
+        exit_code: Option<i32>,
+        _duration: Duration,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -88,13 +98,11 @@ pub(crate) enum BackgroundPlacement {
     BeforeNextOutput,
 }
 
-pub(crate) use code_auto_drive_core::{
-    AutoContinueMode,
-    AutoCoordinatorStatus,
-    AutoTurnAgentsAction,
-    AutoTurnAgentsTiming,
-    AutoTurnCliAction,
-};
+pub(crate) use code_auto_drive_core::AutoContinueMode;
+pub(crate) use code_auto_drive_core::AutoCoordinatorStatus;
+pub(crate) use code_auto_drive_core::AutoTurnAgentsAction;
+pub(crate) use code_auto_drive_core::AutoTurnAgentsTiming;
+pub(crate) use code_auto_drive_core::AutoTurnCliAction;
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
@@ -108,10 +116,15 @@ pub(crate) enum AppEvent {
     Redraw,
 
     /// Update the terminal title override. `None` restores the default title.
-    SetTerminalTitle { title: Option<String> },
+    SetTerminalTitle {
+        title: Option<String>,
+    },
 
     /// Emit a best-effort OSC 9 notification from the terminal.
-    EmitTuiNotification { title: String, body: Option<String> },
+    EmitTuiNotification {
+        title: String,
+        body: Option<String>,
+    },
 
     /// Schedule a one-shot animation frame roughly after the given duration.
     /// Multiple requests are coalesced by the central frame scheduler.
@@ -186,6 +199,26 @@ pub(crate) enum AppEvent {
         token: u64,
         attempt: u32,
     },
+    // Enhanced Auto Drive events
+    AutoCoordinatorCheckpointSaved {
+        session_id: String,
+        turns: usize,
+    },
+    AutoCoordinatorCheckpointRestored {
+        session_id: String,
+        turns: usize,
+    },
+    AutoCoordinatorDiagnosticAlert {
+        alert_type: String,
+        message: String,
+    },
+    AutoCoordinatorBudgetAlert {
+        alert_type: String,
+        message: String,
+    },
+    AutoCoordinatorInterventionRequired {
+        reason: String,
+    },
     ShowAutoDriveSettings,
     CloseAutoDriveSettings,
     AutoDriveSettingsChanged {
@@ -219,7 +252,9 @@ pub(crate) enum AppEvent {
     },
 
     /// Resume picker failed to load
-    ResumePickerLoadFailed { message: String },
+    ResumePickerLoadFailed {
+        message: String,
+    },
 
     /// Signal that agents are about to start (triggered when /plan, /solve, /code commands are entered)
     PrepareAgents,
@@ -275,25 +310,43 @@ pub(crate) enum AppEvent {
     /// Open the Auto Drive model selector overlay
     ShowAutoDriveModelSelector,
     /// Enable/disable a specific validation tool
-    UpdateValidationTool { name: String, enable: bool },
+    UpdateValidationTool {
+        name: String,
+        enable: bool,
+    },
     /// Enable/disable an entire validation group
-    UpdateValidationGroup { group: ValidationGroup, enable: bool },
+    UpdateValidationGroup {
+        group: ValidationGroup,
+        enable: bool,
+    },
     /// Start installing a validation tool through the terminal overlay
-    RequestValidationToolInstall { name: String, command: String },
+    RequestValidationToolInstall {
+        name: String,
+        command: String,
+    },
 
     /// Enable/disable a specific MCP server
     #[allow(dead_code)]
-    UpdateMcpServer { name: String, enable: bool },
+    UpdateMcpServer {
+        name: String,
+        enable: bool,
+    },
 
     /// Prefill the composer input with the given text
     #[allow(dead_code)]
     PrefillComposer(String),
 
     /// Submit a message with hidden preface instructions
-    SubmitTextWithPreface { visible: String, preface: String },
+    SubmitTextWithPreface {
+        visible: String,
+        preface: String,
+    },
 
     /// Submit a hidden message that is not rendered in history but still sent to the LLM
-    SubmitHiddenTextWithPreface { agent_text: String, preface: String },
+    SubmitHiddenTextWithPreface {
+        agent_text: String,
+        preface: String,
+    },
 
     /// Run a review with an explicit prompt/hint pair (used by TUI selections)
     RunReviewWithScope {
@@ -310,7 +363,9 @@ pub(crate) enum AppEvent {
     /// Open a bottom-pane form that lets the user select a commit to review.
     StartReviewCommitPicker,
     /// Populate the commit picker with retrieved commit entries.
-    PresentReviewCommitPicker { commits: Vec<CommitLogEntry> },
+    PresentReviewCommitPicker {
+        commits: Vec<CommitLogEntry>,
+    },
     /// Open a bottom-pane form that lets the user select a base branch to diff against.
     StartReviewBranchPicker,
     /// Populate the branch picker with branch metadata once loaded asynchronously.
@@ -323,25 +378,45 @@ pub(crate) enum AppEvent {
     OpenReviewCustomPrompt,
 
     /// Cloud tasks: fetch the latest list based on the active environment filter.
-    FetchCloudTasks { environment: Option<String> },
+    FetchCloudTasks {
+        environment: Option<String>,
+    },
     /// Cloud tasks: response containing the refreshed task list.
-    PresentCloudTasks { environment: Option<String>, tasks: Vec<TaskSummary> },
+    PresentCloudTasks {
+        environment: Option<String>,
+        tasks: Vec<TaskSummary>,
+    },
     /// Cloud tasks: generic error surfaced to the UI.
-    CloudTasksError { message: String },
+    CloudTasksError {
+        message: String,
+    },
     /// Cloud tasks: fetch available environments to filter against.
     FetchCloudEnvironments,
     /// Cloud tasks: populated environment list ready for selection.
-    PresentCloudEnvironments { environments: Vec<CloudEnvironment> },
+    PresentCloudEnvironments {
+        environments: Vec<CloudEnvironment>,
+    },
     /// Cloud tasks: update the active environment filter (None = all environments).
-    SetCloudEnvironment { environment: Option<CloudEnvironment> },
+    SetCloudEnvironment {
+        environment: Option<CloudEnvironment>,
+    },
     /// Cloud tasks: show actions for a specific task.
-    ShowCloudTaskActions { task_id: String },
+    ShowCloudTaskActions {
+        task_id: String,
+    },
     /// Cloud tasks: load diff for a task (current attempt).
-    FetchCloudTaskDiff { task_id: String },
+    FetchCloudTaskDiff {
+        task_id: String,
+    },
     /// Cloud tasks: load assistant messages for a task (current attempt).
-    FetchCloudTaskMessages { task_id: String },
+    FetchCloudTaskMessages {
+        task_id: String,
+    },
     /// Cloud tasks: run apply or preflight on a task.
-    ApplyCloudTask { task_id: String, preflight: bool },
+    ApplyCloudTask {
+        task_id: String,
+        preflight: bool,
+    },
     /// Cloud tasks: apply/preflight finished.
     CloudTaskApplyFinished {
         task_id: String,
@@ -351,7 +426,11 @@ pub(crate) enum AppEvent {
     /// Cloud tasks: open the create-task prompt.
     OpenCloudTaskCreate,
     /// Cloud tasks: submit a new task creation request.
-    SubmitCloudTaskCreate { env_id: String, prompt: String, best_of_n: usize },
+    SubmitCloudTaskCreate {
+        env_id: String,
+        prompt: String,
+        best_of_n: usize,
+    },
     /// Cloud tasks: new task creation result.
     CloudTaskCreated {
         env_id: String,
@@ -370,12 +449,16 @@ pub(crate) enum AppEvent {
     /// Return to the Agents overview (Agents + Commands)
     ShowAgentsOverview,
     /// Open the agent editor form for a specific agent name
-    ShowAgentEditor { name: String },
+    ShowAgentEditor {
+        name: String,
+    },
     /// Open a blank agent editor form for adding a new agent
     ShowAgentEditorNew,
     // ShowSubagentEditor removed; use ShowSubagentEditorForName or ShowSubagentEditorNew
     /// Open the subagent editor for a specific command name; ChatWidget supplies data
-    ShowSubagentEditorForName { name: String },
+    ShowSubagentEditorForName {
+        name: String,
+    },
     /// Open a blank subagent editor to create a new command
     ShowSubagentEditorNew,
 
@@ -418,9 +501,17 @@ pub(crate) enum AppEvent {
     DiffResult(String),
 
     InsertHistory(Vec<Line<'static>>),
-    InsertHistoryWithKind { id: Option<String>, kind: StreamKind, lines: Vec<Line<'static>> },
+    InsertHistoryWithKind {
+        id: Option<String>,
+        kind: StreamKind,
+        lines: Vec<Line<'static>>,
+    },
     /// Finalized assistant answer with raw markdown for re-rendering under theme changes.
-    InsertFinalAnswer { id: Option<String>, lines: Vec<Line<'static>>, source: String },
+    InsertFinalAnswer {
+        id: Option<String>,
+        lines: Vec<Line<'static>>,
+        source: String,
+    },
     /// Insert a background event with explicit placement semantics.
     InsertBackgroundEvent {
         message: String,
@@ -428,10 +519,14 @@ pub(crate) enum AppEvent {
         order: Option<OrderMeta>,
     },
 
-    AutoUpgradeCompleted { version: String },
+    AutoUpgradeCompleted {
+        version: String,
+    },
 
     /// Background rate limit refresh failed (threaded request).
-    RateLimitFetchFailed { message: String },
+    RateLimitFetchFailed {
+        message: String,
+    },
 
     #[allow(dead_code)]
     StartCommitAnimation,
@@ -450,15 +545,26 @@ pub(crate) enum AppEvent {
     /// Cancel an in-progress ChatGPT login flow triggered via `/login`.
     LoginCancelChatGpt,
     /// ChatGPT login flow has completed (success or failure).
-    LoginChatGptComplete { result: Result<(), String> },
+    LoginChatGptComplete {
+        result: Result<(), String>,
+    },
     /// Device code login flow produced a user code/link.
-    LoginDeviceCodeReady { authorize_url: String, user_code: String },
+    LoginDeviceCodeReady {
+        authorize_url: String,
+        user_code: String,
+    },
     /// Device code login flow failed before completion.
-    LoginDeviceCodeFailed { message: String },
+    LoginDeviceCodeFailed {
+        message: String,
+    },
     /// Device code login flow completed (success or failure).
-    LoginDeviceCodeComplete { result: Result<(), String> },
+    LoginDeviceCodeComplete {
+        result: Result<(), String>,
+    },
     /// The active authentication mode changed (e.g., switched accounts).
-    LoginUsingChatGptChanged { using_chatgpt_auth: bool },
+    LoginUsingChatGptChanged {
+        using_chatgpt_auth: bool,
+    },
 
     /// Show Chrome launch options dialog
     #[allow(dead_code)]
@@ -472,7 +578,11 @@ pub(crate) enum AppEvent {
 
     /// Begin jump-back to the Nth last user message (1 = latest).
     /// Trims visible history up to that point and pre-fills the composer.
-    JumpBack { nth: usize, prefill: String, history_snapshot: Option<HistorySnapshot> },
+    JumpBack {
+        nth: usize,
+        prefill: String,
+        history_snapshot: Option<HistorySnapshot>,
+    },
     /// Result of an async jump-back fork operation performed off the UI thread.
     /// Carries the forked conversation, trimmed prefix to replay, and composer prefill.
     JumpBackForked {
@@ -484,7 +594,10 @@ pub(crate) enum AppEvent {
 
     /// Register an image placeholder inserted by the composer with its backing path
     /// so ChatWidget can resolve it to a LocalImage on submit.
-    RegisterPastedImage { placeholder: String, path: PathBuf },
+    RegisterPastedImage {
+        placeholder: String,
+        path: PathBuf,
+    },
 
     /// Immediately cancel any running task in the ChatWidget. This is used by
     /// the approval modal to reflect a user's Abort decision instantly in the UI
@@ -512,7 +625,9 @@ pub(crate) enum AppEvent {
         exit_code: Option<i32>,
         _duration: Duration,
     },
-    TerminalCancel { id: u64 },
+    TerminalCancel {
+        id: u64,
+    },
     TerminalRunCommand {
         id: u64,
         command: Vec<String>,
@@ -528,17 +643,30 @@ pub(crate) enum AppEvent {
         rows: u16,
         cols: u16,
     },
-    TerminalRerun { id: u64 },
-    TerminalUpdateMessage { id: u64, message: String },
-    TerminalForceClose { id: u64 },
+    TerminalRerun {
+        id: u64,
+    },
+    TerminalUpdateMessage {
+        id: u64,
+        message: String,
+    },
+    TerminalForceClose {
+        id: u64,
+    },
     TerminalAfter(TerminalAfter),
-    TerminalSetAssistantMessage { id: u64, message: String },
+    TerminalSetAssistantMessage {
+        id: u64,
+        message: String,
+    },
     TerminalAwaitCommand {
         id: u64,
         suggestion: String,
         ack: Redacted<StdSender<TerminalCommandGate>>,
     },
-    TerminalApprovalDecision { id: u64, approved: bool },
+    TerminalApprovalDecision {
+        id: u64,
+        approved: bool,
+    },
     StartAutoDriveCelebration {
         message: Option<String>,
     },
@@ -549,8 +677,13 @@ pub(crate) enum AppEvent {
         latest_version: Option<String>,
     },
     SetAutoUpgradeEnabled(bool),
-    RequestAgentInstall { name: String, selected_index: usize },
-    AgentsOverviewSelectionChanged { index: usize },
+    RequestAgentInstall {
+        name: String,
+        selected_index: usize,
+    },
+    AgentsOverviewSelectionChanged {
+        index: usize,
+    },
     /// Add or update an agent's settings (enabled, params, instructions)
     UpdateAgentConfig {
         name: String,
@@ -566,7 +699,6 @@ pub(crate) enum AppEvent {
         result: Result<(), String>,
         attempt_id: Uuid,
     },
-    
 }
 
 // No helper constructor; use `AppEvent::CodexEvent(ev)` directly to avoid shadowing.

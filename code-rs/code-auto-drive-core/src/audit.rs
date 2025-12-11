@@ -5,7 +5,8 @@
 
 use std::path::PathBuf;
 
-use chrono::{DateTime, Utc};
+use chrono::DateTime;
+use chrono::Utc;
 use serde::Serialize;
 
 /// An entry in the audit log.
@@ -31,7 +32,10 @@ pub enum AuditOperation {
     /// Network access was attempted.
     NetworkAccess { url: String, method: String },
     /// An agent was dispatched.
-    AgentDispatch { agent_id: String, write_access: bool },
+    AgentDispatch {
+        agent_id: String,
+        write_access: bool,
+    },
     /// A checkpoint was saved.
     CheckpointSave { checkpoint_id: String },
     /// A budget warning was triggered.
@@ -40,6 +44,13 @@ pub enum AuditOperation {
     SessionStart { goal: String },
     /// Session ended.
     SessionEnd { turns: usize, success: bool },
+    /// Session was migrated to recover a stuck task.
+    SessionMigration {
+        from_session: String,
+        to_session: Option<String>,
+        task_id: String,
+        retry_count: i32,
+    },
 }
 
 /// Actions that can be performed on files.
@@ -231,9 +242,7 @@ impl AuditLogger {
     /// Exports the audit log in the specified format.
     pub fn export(&self, format: ExportFormat) -> anyhow::Result<String> {
         match format {
-            ExportFormat::Json => {
-                Ok(serde_json::to_string_pretty(&self.entries)?)
-            }
+            ExportFormat::Json => Ok(serde_json::to_string_pretty(&self.entries)?),
             ExportFormat::Csv => {
                 let mut csv = String::from("timestamp,operation_type,outcome,context\n");
                 for entry in &self.entries {
@@ -248,6 +257,7 @@ impl AuditLogger {
                         AuditOperation::BudgetWarning { .. } => "budget".to_string(),
                         AuditOperation::SessionStart { .. } => "session_start".to_string(),
                         AuditOperation::SessionEnd { .. } => "session_end".to_string(),
+                        AuditOperation::SessionMigration { .. } => "session_migration".to_string(),
                     };
                     let outcome = match &entry.outcome {
                         AuditOutcome::Success => "success".to_string(),
@@ -272,15 +282,15 @@ impl AuditLogger {
             .iter()
             .filter(|entry| {
                 // Filter by time range
-                if let Some(after) = filter.after {
-                    if entry.timestamp < after {
-                        return false;
-                    }
+                if let Some(after) = filter.after
+                    && entry.timestamp < after
+                {
+                    return false;
                 }
-                if let Some(before) = filter.before {
-                    if entry.timestamp > before {
-                        return false;
-                    }
+                if let Some(before) = filter.before
+                    && entry.timestamp > before
+                {
+                    return false;
                 }
 
                 // Filter by outcome
@@ -388,15 +398,21 @@ mod tests {
         let logger = AuditLogger::new("test")
             .with_network_allowlist(vec!["api.openai.com".to_string(), "github.com".to_string()]);
 
-        assert!(logger
-            .validate_network_access("https://api.openai.com/v1/chat")
-            .is_ok());
-        assert!(logger
-            .validate_network_access("https://github.com/repo")
-            .is_ok());
-        assert!(logger
-            .validate_network_access("https://malicious.com")
-            .is_err());
+        assert!(
+            logger
+                .validate_network_access("https://api.openai.com/v1/chat")
+                .is_ok()
+        );
+        assert!(
+            logger
+                .validate_network_access("https://github.com/repo")
+                .is_ok()
+        );
+        assert!(
+            logger
+                .validate_network_access("https://malicious.com")
+                .is_err()
+        );
     }
 
     #[test]

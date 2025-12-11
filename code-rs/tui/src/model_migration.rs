@@ -1,9 +1,18 @@
-use std::io::{self, Write};
+use std::io::Write;
+use std::io::{self};
 
-use crossterm::cursor::MoveTo;
-use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode, Clear, ClearType};
 use crossterm::ExecutableCommand;
+use crossterm::cursor::MoveTo;
+use crossterm::event::Event;
+use crossterm::event::KeyCode;
+use crossterm::event::KeyEvent;
+use crossterm::event::KeyEventKind;
+use crossterm::event::KeyModifiers;
+use crossterm::event::{self};
+use crossterm::terminal::Clear;
+use crossterm::terminal::ClearType;
+use crossterm::terminal::disable_raw_mode;
+use crossterm::terminal::enable_raw_mode;
 
 pub(crate) enum ModelMigrationOutcome {
     Accepted,
@@ -42,7 +51,9 @@ pub(crate) fn migration_copy_for_key(key: &str) -> ModelMigrationCopy {
     }
 }
 
-pub(crate) fn run_model_migration_prompt(copy: &ModelMigrationCopy) -> io::Result<ModelMigrationOutcome> {
+pub(crate) fn run_model_migration_prompt(
+    copy: &ModelMigrationCopy,
+) -> io::Result<ModelMigrationOutcome> {
     struct RawModeGuard;
     impl RawModeGuard {
         fn new() -> io::Result<Self> {
@@ -64,7 +75,13 @@ pub(crate) fn run_model_migration_prompt(copy: &ModelMigrationCopy) -> io::Resul
 
     loop {
         let event = event::read()?;
-        if let Event::Key(KeyEvent { code, modifiers, kind, .. }) = event {
+        if let Event::Key(KeyEvent {
+            code,
+            modifiers,
+            kind,
+            ..
+        }) = event
+        {
             if matches!(kind, KeyEventKind::Release) {
                 continue;
             }
@@ -111,7 +128,11 @@ pub(crate) fn run_model_migration_prompt(copy: &ModelMigrationCopy) -> io::Resul
     }
 }
 
-fn render_prompt(stdout: &mut io::Stdout, copy: &ModelMigrationCopy, highlighted: usize) -> io::Result<()> {
+fn render_prompt(
+    stdout: &mut io::Stdout,
+    copy: &ModelMigrationCopy,
+    highlighted: usize,
+) -> io::Result<()> {
     stdout.execute(Clear(ClearType::All))?;
     stdout.execute(MoveTo(0, 0))?;
 
@@ -123,7 +144,10 @@ fn render_prompt(stdout: &mut io::Stdout, copy: &ModelMigrationCopy, highlighted
 
     if copy.can_opt_out {
         writeln!(stdout)?;
-        for (idx, label) in ["Try new model (recommended)", "Use existing model"].iter().enumerate() {
+        for (idx, label) in ["Try new model (recommended)", "Use existing model"]
+            .iter()
+            .enumerate()
+        {
             if idx == highlighted {
                 writeln!(stdout, "> {label}")?;
             } else {
@@ -131,7 +155,10 @@ fn render_prompt(stdout: &mut io::Stdout, copy: &ModelMigrationCopy, highlighted
             }
         }
         writeln!(stdout)?;
-        writeln!(stdout, "Use ↑/↓ to move, Enter to confirm, Esc to keep current model.")?;
+        writeln!(
+            stdout,
+            "Use ↑/↓ to move, Enter to confirm, Esc to keep current model."
+        )?;
     }
 
     stdout.flush()

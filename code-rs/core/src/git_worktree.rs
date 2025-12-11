@@ -1,8 +1,10 @@
 use base64::Engine;
 use chrono::Utc;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 use std::fs as stdfs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::path::PathBuf;
 use tokio::fs::OpenOptions;
 use tokio::process::Command;
 
@@ -59,7 +61,11 @@ pub fn sanitize_ref_component(s: &str) -> String {
         }
     }
     let out = out.trim_matches('-').to_string();
-    if out.is_empty() { "branch".to_string() } else { out }
+    if out.is_empty() {
+        "branch".to_string()
+    } else {
+        out
+    }
 }
 
 /// Generate a branch name for a generic task. If `task` is None or cannot
@@ -77,7 +83,9 @@ pub fn generate_branch_name_from_task(task: Option<&str>) -> String {
             if slug.len() > 48 {
                 slug.truncate(48);
                 slug = slug.trim_matches('-').to_string();
-                if slug.is_empty() { slug = "branch".to_string(); }
+                if slug.is_empty() {
+                    slug = "branch".to_string();
+                }
             }
             return format!("code-branch-{}", slug);
         }
@@ -150,7 +158,13 @@ pub async fn setup_worktree(git_root: &Path, branch_id: &str) -> Result<(PathBuf
 
     let output = Command::new("git")
         .current_dir(git_root)
-        .args(["worktree", "add", "-b", &effective_branch, worktree_path.to_str().unwrap()])
+        .args([
+            "worktree",
+            "add",
+            "-b",
+            &effective_branch,
+            worktree_path.to_str().unwrap(),
+        ])
         .output()
         .await
         .map_err(|e| format!("Failed to create git worktree: {}", e))?;
@@ -159,7 +173,11 @@ pub async fn setup_worktree(git_root: &Path, branch_id: &str) -> Result<(PathBuf
         let stderr = String::from_utf8_lossy(&output.stderr);
         // If the branch already exists, generate a unique name and retry once.
         if stderr.contains("already exists") {
-            effective_branch = format!("{}-{}", effective_branch, Utc::now().format("%Y%m%d-%H%M%S"));
+            effective_branch = format!(
+                "{}-{}",
+                effective_branch,
+                Utc::now().format("%Y%m%d-%H%M%S")
+            );
             worktree_path = code_dir.join(&effective_branch);
             // Ensure target path is clean
             if worktree_path.exists() {
@@ -174,7 +192,13 @@ pub async fn setup_worktree(git_root: &Path, branch_id: &str) -> Result<(PathBuf
             }
             let retry = Command::new("git")
                 .current_dir(git_root)
-                .args(["worktree", "add", "-b", &effective_branch, worktree_path.to_str().unwrap()])
+                .args([
+                    "worktree",
+                    "add",
+                    "-b",
+                    &effective_branch,
+                    worktree_path.to_str().unwrap(),
+                ])
                 .output()
                 .await
                 .map_err(|e| format!("Failed to create git worktree (retry): {}", e))?;
@@ -202,10 +226,17 @@ async fn record_worktree_in_session(git_root: &Path, worktree_path: &Path) {
     let mut base = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
     // Global session registry: ~/.code/working/_session
     base = base.join(".code").join("working").join("_session");
-    if let Err(_e) = tokio::fs::create_dir_all(&base).await { return; }
+    if let Err(_e) = tokio::fs::create_dir_all(&base).await {
+        return;
+    }
     let file = base.join(format!("pid-{}.txt", pid));
     // Store git_root and worktree_path separated by a tab; one entry per line.
-    if let Ok(mut f) = OpenOptions::new().create(true).append(true).open(&file).await {
+    if let Ok(mut f) = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&file)
+        .await
+    {
         let line = format!("{}\t{}\n", git_root.display(), worktree_path.display());
         let _ = tokio::io::AsyncWriteExt::write_all(&mut f, line.as_bytes()).await;
     }
@@ -309,10 +340,7 @@ fn canonical_worktree_path(worktree_path: &Path) -> Option<PathBuf> {
 fn metadata_file_path(worktree_path: &Path) -> Option<PathBuf> {
     let canonical = canonical_worktree_path(worktree_path)?;
     let mut base = dirs::home_dir()?;
-    base = base
-        .join(".code")
-        .join("working")
-        .join(BRANCH_METADATA_DIR);
+    base = base.join(".code").join("working").join(BRANCH_METADATA_DIR);
     let key = canonical.to_string_lossy();
     let encoded = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(key.as_bytes());
     Some(base.join(encoded).with_extension("json"))
@@ -322,7 +350,9 @@ pub async fn write_branch_metadata(
     worktree_path: &Path,
     metadata: &BranchMetadata,
 ) -> Result<(), String> {
-    let Some(path) = metadata_file_path(worktree_path) else { return Ok(()); };
+    let Some(path) = metadata_file_path(worktree_path) else {
+        return Ok(());
+    };
     if let Some(parent) = path.parent() {
         tokio::fs::create_dir_all(parent)
             .await
@@ -392,7 +422,9 @@ async fn _ensure_origin_remote(git_root: &Path) -> Result<(), String> {
     let mut candidates = vec!["fork", "upstream-push", "upstream"]; // typical setups
     // Append any other remotes as fallbacks
     for r in &remotes {
-        if !candidates.contains(&r.as_str()) { candidates.push(r); }
+        if !candidates.contains(&r.as_str()) {
+            candidates.push(r);
+        }
     }
 
     // Find a candidate with a URL
@@ -432,7 +464,10 @@ async fn _ensure_origin_remote(git_root: &Path) -> Result<(), String> {
 
 /// Copy uncommitted (modified + untracked) files from `src_root` into the `worktree_path`.
 /// Returns the number of files copied.
-pub async fn copy_uncommitted_to_worktree(src_root: &Path, worktree_path: &Path) -> Result<usize, String> {
+pub async fn copy_uncommitted_to_worktree(
+    src_root: &Path,
+    worktree_path: &Path,
+) -> Result<usize, String> {
     // List modified and other (untracked) files relative to repo root
     let output = Command::new("git")
         .current_dir(src_root)
@@ -447,19 +482,42 @@ pub async fn copy_uncommitted_to_worktree(src_root: &Path, worktree_path: &Path)
     let bytes = output.stdout;
     let mut count = 0usize;
     for path_bytes in bytes.split(|b| *b == 0) {
-        if path_bytes.is_empty() { continue; }
-        let rel = match String::from_utf8(path_bytes.to_vec()) { Ok(s) => s, Err(_) => continue };
+        if path_bytes.is_empty() {
+            continue;
+        }
+        let rel = match String::from_utf8(path_bytes.to_vec()) {
+            Ok(s) => s,
+            Err(_) => continue,
+        };
         // Avoid copying .git files explicitly
-        if rel.starts_with(".git/") { continue; }
+        if rel.starts_with(".git/") {
+            continue;
+        }
         let from = src_root.join(&rel);
         let to = worktree_path.join(&rel);
-        let meta = match tokio::fs::metadata(&from).await { Ok(m) => m, Err(_) => continue };
-        if !meta.is_file() { continue; }
-        if let Some(parent) = to.parent() { tokio::fs::create_dir_all(parent).await.map_err(|e| format!("Failed to create dir {}: {}", parent.display(), e))?; }
+        let meta = match tokio::fs::metadata(&from).await {
+            Ok(m) => m,
+            Err(_) => continue,
+        };
+        if !meta.is_file() {
+            continue;
+        }
+        if let Some(parent) = to.parent() {
+            tokio::fs::create_dir_all(parent)
+                .await
+                .map_err(|e| format!("Failed to create dir {}: {}", parent.display(), e))?;
+        }
         // Use copy for files; skip if it's a directory (shouldn't appear from ls-files)
         match tokio::fs::copy(&from, &to).await {
             Ok(_) => count += 1,
-            Err(e) => return Err(format!("Failed to copy {} -> {}: {}", from.display(), to.display(), e)),
+            Err(e) => {
+                return Err(format!(
+                    "Failed to copy {} -> {}: {}",
+                    from.display(),
+                    to.display(),
+                    e
+                ));
+            }
         }
     }
 
@@ -481,11 +539,19 @@ pub async fn copy_uncommitted_to_worktree(src_root: &Path, worktree_path: &Path)
                 let text = String::from_utf8_lossy(&out.stdout);
                 for line in text.lines() {
                     let line = line.trim();
-                    if !line.starts_with('+') { continue; }
+                    if !line.starts_with('+') {
+                        continue;
+                    }
                     let rest = &line[1..];
                     let mut parts = rest.split_whitespace();
-                    let sha = match parts.next() { Some(s) => s, None => continue };
-                    let path = match parts.next() { Some(p) => p, None => continue };
+                    let sha = match parts.next() {
+                        Some(s) => s,
+                        None => continue,
+                    };
+                    let path = match parts.next() {
+                        Some(p) => p,
+                        None => continue,
+                    };
                     let spec = format!("160000,{},{}", sha, path);
                     let _ = Command::new("git")
                         .current_dir(worktree_path)
@@ -510,18 +576,27 @@ pub async fn detect_default_branch(cwd: &Path) -> Option<String> {
         .ok()?;
     if sym.status.success() {
         if let Ok(s) = String::from_utf8(sym.stdout) {
-            if let Some((_, name)) = s.trim().rsplit_once('/') { return Some(name.to_string()); }
+            if let Some((_, name)) = s.trim().rsplit_once('/') {
+                return Some(name.to_string());
+            }
         }
     }
     // Fallback to local main/master
     for candidate in ["main", "master"] {
         let out = Command::new("git")
             .current_dir(cwd)
-            .args(["rev-parse", "--verify", "--quiet", &format!("refs/heads/{candidate}")])
+            .args([
+                "rev-parse",
+                "--verify",
+                "--quiet",
+                &format!("refs/heads/{candidate}"),
+            ])
             .output()
             .await
             .ok()?;
-        if out.status.success() { return Some(candidate.to_string()); }
+        if out.status.success() {
+            return Some(candidate.to_string());
+        }
     }
     None
 }

@@ -94,6 +94,14 @@
 - 目标保护：始终保留原始目标
 - 可配置保留策略
 
+### 高吞吐多智能体（实验性）
+- 会话池：SessionPool 按 min=5 / max=20 预热并自扩缩，负载接近 `max_sessions*10` 会发 BackpressureWarning，超限拒绝任务。
+- 并行角色：每会话默认最多 8 个角色，低于 8 会写入低并发告警；RoleChannel 驱动 WorkComplete/Error/Guidance/StageAdvance。
+- 流水线：TaskPipeline 按阶段生成角色任务，失败会中断并传播到协调器。
+- 外部记忆：`ai/feature_list.json` 保存特性、TDD 模式与验证结果，`ai/progress.log` 追加 `timestamp | type | status | tests | summary | note`。
+- 选择性测试/TDD：从 `git diff` 生成测试计划（优先 unit，strict 缺测直接失败），验证结果写回 backlog 与进度日志。
+- 配置入口：`[auto_drive.high_throughput]` 配置池参数，`max_concurrent_agents` 默认 8。
+
 ## 设置（config.toml）
 - 顶层键：`auto_drive_use_chat_model`（默认 false）、`auto_drive_observer_cadence`（默认 5）。
 - `[auto_drive]` 默认：`review_enabled=true`、`agents_enabled=true`、`qa_automation_enabled=true`、`cross_check_enabled=true`、`observer_enabled=true`、`coordinator_routing=true`、`continue_mode="ten-seconds"`、`model="gpt-5.1"`、`model_reasoning_effort="high"`、`auto_resolve_review_attempts=5`。

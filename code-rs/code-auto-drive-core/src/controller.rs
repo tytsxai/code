@@ -1,4 +1,5 @@
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use std::time::Instant;
 
 use code_common::elapsed::format_duration;
 use code_core::protocol::ReviewContextMetadata;
@@ -140,7 +141,12 @@ impl AutoRunPhase {
     }
 
     pub fn diagnostics_pending(&self) -> bool {
-        matches!(self, Self::AwaitingReview { diagnostics_pending: true })
+        matches!(
+            self,
+            Self::AwaitingReview {
+                diagnostics_pending: true
+            }
+        )
     }
 
     pub fn is_waiting_for_response(&self) -> bool {
@@ -261,17 +267,41 @@ pub const AUTO_RESOLVE_REVIEW_FOLLOWUP: &str = "This issue has been resolved. Pl
 #[derive(Debug, Clone)]
 pub enum AutoControllerEffect {
     RefreshUi,
-    StartCountdown { countdown_id: u64, decision_seq: u64, seconds: u8 },
+    StartCountdown {
+        countdown_id: u64,
+        decision_seq: u64,
+        seconds: u8,
+    },
     SubmitPrompt,
-    LaunchStarted { goal: String },
-    LaunchFailed { goal: String, error: String },
-    StopCompleted { summary: AutoRunSummary, message: Option<String> },
-    TransientPause { attempt: u32, delay: Duration, reason: String },
-    ScheduleRestart { token: u64, attempt: u32, delay: Duration },
+    LaunchStarted {
+        goal: String,
+    },
+    LaunchFailed {
+        goal: String,
+        error: String,
+    },
+    StopCompleted {
+        summary: AutoRunSummary,
+        message: Option<String>,
+    },
+    TransientPause {
+        attempt: u32,
+        delay: Duration,
+        reason: String,
+    },
+    ScheduleRestart {
+        token: u64,
+        attempt: u32,
+        delay: Duration,
+    },
     CancelCoordinator,
     ResetHistory,
-    UpdateTerminalHint { hint: Option<String> },
-    SetTaskRunning { running: bool },
+    UpdateTerminalHint {
+        hint: Option<String>,
+    },
+    SetTaskRunning {
+        running: bool,
+    },
     EnsureInputFocus,
     ClearCoordinatorView,
     ShowGoalEntry,
@@ -323,6 +353,11 @@ pub struct AutoDriveController {
     pub pending_stop_message: Option<String>,
     pub last_completion_explanation: Option<String>,
     pub phase: AutoRunPhase,
+    // Enhanced Auto Drive fields
+    pub budget_alert: Option<String>,
+    pub diagnostic_alert: Option<String>,
+    pub intervention_reason: Option<String>,
+    pub checkpoint_status: Option<String>,
 }
 
 impl AutoDriveController {
@@ -333,11 +368,15 @@ impl AutoDriveController {
     pub fn set_waiting_for_response(&mut self, waiting: bool) {
         if waiting {
             match &mut self.phase {
-                AutoRunPhase::AwaitingDiagnostics { coordinator_waiting } => {
+                AutoRunPhase::AwaitingDiagnostics {
+                    coordinator_waiting,
+                } => {
                     *coordinator_waiting = true;
                 }
                 _ => {
-                    self.apply_phase(AutoRunPhase::AwaitingDiagnostics { coordinator_waiting: true });
+                    self.apply_phase(AutoRunPhase::AwaitingDiagnostics {
+                        coordinator_waiting: true,
+                    });
                 }
             }
         } else if self.phase.is_waiting_for_response() {
@@ -347,11 +386,15 @@ impl AutoDriveController {
 
     pub fn set_coordinator_waiting(&mut self, waiting: bool) {
         match &mut self.phase {
-            AutoRunPhase::AwaitingDiagnostics { coordinator_waiting } => {
+            AutoRunPhase::AwaitingDiagnostics {
+                coordinator_waiting,
+            } => {
                 *coordinator_waiting = waiting;
             }
             _ if waiting => {
-                self.apply_phase(AutoRunPhase::AwaitingDiagnostics { coordinator_waiting: true });
+                self.apply_phase(AutoRunPhase::AwaitingDiagnostics {
+                    coordinator_waiting: true,
+                });
             }
             _ => {}
         }
@@ -363,7 +406,9 @@ impl AutoDriveController {
 
     pub fn on_prompt_submitted(&mut self) {
         self.countdown_override = None;
-        self.apply_phase(AutoRunPhase::AwaitingDiagnostics { coordinator_waiting: true });
+        self.apply_phase(AutoRunPhase::AwaitingDiagnostics {
+            coordinator_waiting: true,
+        });
     }
 
     pub fn on_pause_for_manual(&mut self, resume_after_submit: bool) {
@@ -378,7 +423,9 @@ impl AutoDriveController {
     }
 
     pub fn on_begin_review(&mut self, diagnostics_pending: bool) {
-        self.apply_phase(AutoRunPhase::AwaitingReview { diagnostics_pending });
+        self.apply_phase(AutoRunPhase::AwaitingReview {
+            diagnostics_pending,
+        });
     }
 
     pub fn on_complete_review(&mut self) {
@@ -396,11 +443,14 @@ impl AutoDriveController {
     }
 
     pub fn transition(&mut self, transition: PhaseTransition) -> TransitionEffects {
-        let old_phase = self.phase.clone();
+        let old_phase = self.phase;
         let effects = Vec::new();
 
         match (&self.phase, &transition) {
-            (AutoRunPhase::Idle | AutoRunPhase::AwaitingGoalEntry, PhaseTransition::BeginLaunch) => {
+            (
+                AutoRunPhase::Idle | AutoRunPhase::AwaitingGoalEntry,
+                PhaseTransition::BeginLaunch,
+            ) => {
                 self.apply_phase(AutoRunPhase::Launching);
             }
             (AutoRunPhase::Launching, PhaseTransition::LaunchSuccess) => {
@@ -409,7 +459,12 @@ impl AutoDriveController {
             (AutoRunPhase::Launching, PhaseTransition::LaunchFailed) => {
                 self.apply_phase(AutoRunPhase::AwaitingGoalEntry);
             }
-            (AutoRunPhase::Active, PhaseTransition::PauseForManualEdit { resume_after_submit }) => {
+            (
+                AutoRunPhase::Active,
+                PhaseTransition::PauseForManualEdit {
+                    resume_after_submit,
+                },
+            ) => {
                 self.apply_phase(AutoRunPhase::PausedManual {
                     resume_after_submit: *resume_after_submit,
                     bypass_next_submit: false,
@@ -425,17 +480,28 @@ impl AutoDriveController {
                 self.apply_phase(AutoRunPhase::Active);
             }
             (AutoRunPhase::Active, PhaseTransition::AwaitDiagnostics) => {
-                self.apply_phase(AutoRunPhase::AwaitingDiagnostics { coordinator_waiting: true });
+                self.apply_phase(AutoRunPhase::AwaitingDiagnostics {
+                    coordinator_waiting: true,
+                });
             }
-            (AutoRunPhase::AwaitingDiagnostics { .. } | AutoRunPhase::Active, PhaseTransition::BeginReview { diagnostics_pending }) => {
-                self.apply_phase(AutoRunPhase::AwaitingReview { diagnostics_pending: *diagnostics_pending });
+            (
+                AutoRunPhase::AwaitingDiagnostics { .. } | AutoRunPhase::Active,
+                PhaseTransition::BeginReview {
+                    diagnostics_pending,
+                },
+            ) => {
+                self.apply_phase(AutoRunPhase::AwaitingReview {
+                    diagnostics_pending: *diagnostics_pending,
+                });
             }
             (AutoRunPhase::AwaitingReview { .. }, PhaseTransition::CompleteReview) => {
                 self.apply_phase(AutoRunPhase::Active);
             }
             (_, PhaseTransition::TransientFailure { backoff_ms }) => {
                 if self.phase.is_active() {
-                    self.apply_phase(AutoRunPhase::TransientRecovery { backoff_ms: *backoff_ms });
+                    self.apply_phase(AutoRunPhase::TransientRecovery {
+                        backoff_ms: *backoff_ms,
+                    });
                 }
             }
             (AutoRunPhase::TransientRecovery { .. }, PhaseTransition::RecoveryAttempt) => {
@@ -444,12 +510,14 @@ impl AutoDriveController {
             (_, PhaseTransition::Stop) => {
                 self.apply_phase(AutoRunPhase::Idle);
             }
-            _ => {
-            }
+            _ => {}
         }
 
         let phase_changed = old_phase != self.phase;
-        TransitionEffects { effects, phase_changed }
+        TransitionEffects {
+            effects,
+            phase_changed,
+        }
     }
 
     pub fn prepare_launch(
@@ -508,7 +576,9 @@ impl AutoDriveController {
         self.last_decision_status_sent_to_user = None;
         self.last_decision_status_title = None;
         self.reset_countdown();
-        self.apply_phase(AutoRunPhase::AwaitingDiagnostics { coordinator_waiting: true });
+        self.apply_phase(AutoRunPhase::AwaitingDiagnostics {
+            coordinator_waiting: true,
+        });
 
         vec![
             AutoControllerEffect::LaunchStarted { goal },
@@ -530,11 +600,7 @@ impl AutoDriveController {
         ]
     }
 
-    pub fn stop_run(
-        &mut self,
-        now: Instant,
-        message: Option<String>,
-    ) -> Vec<AutoControllerEffect> {
+    pub fn stop_run(&mut self, now: Instant, message: Option<String>) -> Vec<AutoControllerEffect> {
         let duration = self
             .started_at
             .map(|start| now.saturating_duration_since(start))
@@ -578,7 +644,9 @@ impl AutoDriveController {
         self.pending_agent_actions.clear();
         self.pending_agent_timing = None;
         let delay = Self::auto_restart_delay(pending_attempt);
-        self.apply_phase(AutoRunPhase::TransientRecovery { backoff_ms: delay.as_millis() as u64 });
+        self.apply_phase(AutoRunPhase::TransientRecovery {
+            backoff_ms: delay.as_millis() as u64,
+        });
 
         if pending_attempt > AUTO_RESTART_MAX_ATTEMPTS {
             self.transient_restart_attempts = pending_attempt;
@@ -629,7 +697,7 @@ impl AutoDriveController {
             "Waiting for connection… retrying in {human_delay} (attempt {pending_attempt}/{AUTO_RESTART_MAX_ATTEMPTS})"
         ));
         self.current_display_is_summary = true;
-        self.current_status_title = Some(format!("Retrying after error"));
+        self.current_status_title = Some("Retrying after error".to_string());
         self.current_status_sent_to_user = Some(format!(
             "Encountered an error: {truncated_reason}. Waiting before retrying."
         ));
@@ -798,7 +866,8 @@ impl AutoDriveController {
     }
 
     pub fn countdown_seconds(&self) -> Option<u8> {
-        self.countdown_override.or_else(|| self.continue_mode.seconds())
+        self.countdown_override
+            .or_else(|| self.continue_mode.seconds())
     }
 
     pub fn reset_countdown(&mut self) {
@@ -833,7 +902,10 @@ impl AutoDriveController {
     }
 
     pub fn set_bypass_coordinator_next_submit(&mut self) {
-        if let AutoRunPhase::PausedManual { bypass_next_submit, .. } = &mut self.phase {
+        if let AutoRunPhase::PausedManual {
+            bypass_next_submit, ..
+        } = &mut self.phase
+        {
             *bypass_next_submit = true;
         }
     }
@@ -849,7 +921,10 @@ impl AutoDriveController {
     }
 
     pub fn clear_bypass_coordinator_flag(&mut self) {
-        if let AutoRunPhase::PausedManual { bypass_next_submit, .. } = &mut self.phase {
+        if let AutoRunPhase::PausedManual {
+            bypass_next_submit, ..
+        } = &mut self.phase
+        {
             *bypass_next_submit = false;
         }
     }
@@ -914,7 +989,10 @@ impl AutoDriveController {
 
 #[cfg(test)]
 mod tests {
-    use super::{AutoControllerEffect, AutoDriveController, AutoRunPhase, AUTO_RESTART_MAX_ATTEMPTS};
+    use super::AUTO_RESTART_MAX_ATTEMPTS;
+    use super::AutoControllerEffect;
+    use super::AutoDriveController;
+    use super::AutoRunPhase;
     use std::time::Instant;
 
     #[test]
@@ -967,15 +1045,18 @@ mod tests {
         controller.goal = Some("Investigate outage".to_string());
         controller.started_at = Some(Instant::now());
 
-        let effects = controller.pause_for_transient_failure(
-            Instant::now(),
-            "network error".to_string(),
-        );
+        let effects =
+            controller.pause_for_transient_failure(Instant::now(), "network error".to_string());
 
-        assert!(effects
-            .iter()
-            .any(|effect| matches!(effect, AutoControllerEffect::CancelCoordinator)));
-        assert!(matches!(controller.current_phase(), AutoRunPhase::AwaitingGoalEntry));
+        assert!(
+            effects
+                .iter()
+                .any(|effect| matches!(effect, AutoControllerEffect::CancelCoordinator))
+        );
+        assert!(matches!(
+            controller.current_phase(),
+            AutoRunPhase::AwaitingGoalEntry
+        ));
         assert!(controller.last_run_summary.is_some());
     }
 

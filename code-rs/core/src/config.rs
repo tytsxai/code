@@ -1,39 +1,42 @@
+use crate::agent_defaults::agent_model_spec;
+use crate::agent_defaults::default_agent_configs;
 use crate::codex::ApprovedCommandPattern;
-use crate::protocol::ApprovedCommandMatchKind;
-use crate::config_loader::{load_config_as_toml_blocking, LoaderOverrides};
+use crate::config_loader::LoaderOverrides;
+use crate::config_loader::load_config_as_toml_blocking;
 use crate::config_profile::ConfigProfile;
 use crate::config_types::AgentConfig;
-use crate::agent_defaults::{agent_model_spec, default_agent_configs};
-use std::collections::{HashMap, HashSet};
-use crate::config_types::AutoDriveContinueMode;
-use crate::config_types::AutoDriveSettings;
 use crate::config_types::AllowedCommand;
 use crate::config_types::AllowedCommandMatchKind;
+use crate::config_types::AutoDriveContinueMode;
+use crate::config_types::AutoDriveSettings;
 use crate::config_types::BrowserConfig;
 use crate::config_types::CachedTerminalBackground;
 use crate::config_types::ClientTools;
-use crate::config_types::Notice;
-use crate::config_types::History;
+use crate::config_types::ConfirmGuardConfig;
+use crate::config_types::DEFAULT_OTEL_ENVIRONMENT;
 use crate::config_types::GithubConfig;
-use crate::config_types::ValidationConfig;
-use crate::config_types::ThemeName;
-use crate::config_types::ThemeColors;
+use crate::config_types::History;
 use crate::config_types::McpServerConfig;
 use crate::config_types::McpServerTransportConfig;
+use crate::config_types::Notice;
 use crate::config_types::Notifications;
 use crate::config_types::OtelConfig;
 use crate::config_types::OtelConfigToml;
 use crate::config_types::OtelExporterKind;
 use crate::config_types::ProjectCommandConfig;
 use crate::config_types::ProjectHookConfig;
+use crate::config_types::ReasoningEffort;
+use crate::config_types::ReasoningSummary;
 use crate::config_types::SandboxWorkspaceWrite;
 use crate::config_types::ShellEnvironmentPolicy;
 use crate::config_types::ShellEnvironmentPolicyToml;
 use crate::config_types::TextVerbosity;
+use crate::config_types::ThemeColors;
+use crate::config_types::ThemeName;
 use crate::config_types::Tui;
+use crate::config_types::UiLocale;
 use crate::config_types::UriBasedFileOpener;
-use crate::config_types::ConfirmGuardConfig;
-use crate::config_types::DEFAULT_OTEL_ENVIRONMENT;
+use crate::config_types::ValidationConfig;
 use crate::git_info::resolve_root_git_project_for_trust;
 use crate::model_family::ModelFamily;
 use crate::model_family::derive_default_model_family;
@@ -41,25 +44,28 @@ use crate::model_family::find_family_for_model;
 use crate::model_provider_info::ModelProviderInfo;
 use crate::model_provider_info::built_in_model_providers;
 use crate::openai_model_info::get_model_info;
-use crate::reasoning::clamp_reasoning_effort_for_model;
+use crate::project_features::ProjectCommand;
+use crate::project_features::ProjectHooks;
+use crate::project_features::load_project_commands;
+use crate::protocol::ApprovedCommandMatchKind;
 use crate::protocol::AskForApproval;
 use crate::protocol::SandboxPolicy;
-use crate::config_types::ReasoningEffort;
-use std::sync::LazyLock;
-use std::sync::Mutex;
-use crate::config_types::ReasoningSummary;
-use crate::config_types::UiLocale;
-use crate::project_features::{load_project_commands, ProjectCommand, ProjectHooks};
+use crate::reasoning::clamp_reasoning_effort_for_model;
 use code_app_server_protocol::AuthMode;
 use code_protocol::config_types::SandboxMode;
-use std::time::Duration;
 use dirs::home_dir;
 use serde::Deserialize;
-use serde::de::{self, Unexpected};
+use serde::de::Unexpected;
+use serde::de::{self};
 use std::collections::BTreeMap;
+use std::collections::HashMap;
+use std::collections::HashSet;
 use std::io::ErrorKind;
 use std::path::Path;
 use std::path::PathBuf;
+use std::sync::LazyLock;
+use std::sync::Mutex;
+use std::time::Duration;
 use tempfile::NamedTempFile;
 use toml::Value as TomlValue;
 use toml_edit::Array as TomlArray;
@@ -375,7 +381,7 @@ pub struct Config {
 
     /// Enable debug logging of LLM requests and responses
     pub debug: bool,
-    
+
     /// Whether we're using ChatGPT authentication (affects feature availability)
     pub using_chatgpt_auth: bool,
 
@@ -592,25 +598,21 @@ pub async fn persist_model_selection(
     {
         let root = doc.as_table_mut();
         if let Some(profile_name) = profile {
-            let profiles_item = root
-                .entry("profiles")
-                .or_insert_with(|| {
-                    let mut table = TomlTable::new();
-                    table.set_implicit(true);
-                    TomlItem::Table(table)
-                });
+            let profiles_item = root.entry("profiles").or_insert_with(|| {
+                let mut table = TomlTable::new();
+                table.set_implicit(true);
+                TomlItem::Table(table)
+            });
 
             let profiles_table = profiles_item
                 .as_table_mut()
                 .expect("profiles table should be a table");
 
-            let profile_item = profiles_table
-                .entry(profile_name)
-                .or_insert_with(|| {
-                    let mut table = TomlTable::new();
-                    table.set_implicit(false);
-                    TomlItem::Table(table)
-                });
+            let profile_item = profiles_table.entry(profile_name).or_insert_with(|| {
+                let mut table = TomlTable::new();
+                table.set_implicit(false);
+                TomlItem::Table(table)
+            });
 
             let profile_table = profile_item
                 .as_table_mut()
@@ -619,8 +621,7 @@ pub async fn persist_model_selection(
             profile_table["model"] = toml_edit::value(model.to_string());
 
             if let Some(effort) = effort {
-                profile_table["model_reasoning_effort"] =
-                    toml_edit::value(effort.to_string());
+                profile_table["model_reasoning_effort"] = toml_edit::value(effort.to_string());
             } else {
                 profile_table.remove("model_reasoning_effort");
             }
@@ -628,8 +629,7 @@ pub async fn persist_model_selection(
             root["model"] = toml_edit::value(model.to_string());
             match effort {
                 Some(effort) => {
-                    root["model_reasoning_effort"] =
-                        toml_edit::value(effort.to_string());
+                    root["model_reasoning_effort"] = toml_edit::value(effort.to_string());
                 }
                 None => {
                     root.remove("model_reasoning_effort");
@@ -885,7 +885,9 @@ pub fn set_custom_spinner(
     let node = &mut doc["tui"]["spinner"]["custom"][id];
     node["interval"] = toml_edit::value(interval as i64);
     let mut arr = toml_edit::Array::default();
-    for s in frames { arr.push(s.as_str()); }
+    for s in frames {
+        arr.push(s.as_str());
+    }
     node["frames"] = toml_edit::value(arr);
     node["label"] = toml_edit::value(label);
 
@@ -921,7 +923,9 @@ pub fn set_custom_theme(
         doc["tui"]["theme"]["name"] = toml_edit::value("custom");
     }
     doc["tui"]["theme"]["label"] = toml_edit::value(label);
-    if let Some(d) = is_dark { doc["tui"]["theme"]["is_dark"] = toml_edit::value(d); }
+    if let Some(d) = is_dark {
+        doc["tui"]["theme"]["is_dark"] = toml_edit::value(d);
+    }
 
     // Ensure colors table exists and write provided keys
     {
@@ -933,10 +937,12 @@ pub fn set_custom_theme(
         if !theme_tbl.contains_key("colors") {
             theme_tbl.insert("colors", It::Table(toml_edit::Table::new()));
         }
-    let colors_tbl = theme_tbl["colors"].as_table_mut().unwrap();
+        let colors_tbl = theme_tbl["colors"].as_table_mut().unwrap();
         macro_rules! set_opt {
             ($key:ident) => {
-                if let Some(ref v) = colors.$key { colors_tbl.insert(stringify!($key), toml_edit::value(v.clone())); }
+                if let Some(ref v) = colors.$key {
+                    colors_tbl.insert(stringify!($key), toml_edit::value(v.clone()));
+                }
             };
         }
         set_opt!(primary);
@@ -1147,14 +1153,10 @@ pub fn set_auto_drive_settings(
 
     doc["auto_drive"]["review_enabled"] = toml_edit::value(settings.review_enabled);
     doc["auto_drive"]["agents_enabled"] = toml_edit::value(settings.agents_enabled);
-    doc["auto_drive"]["qa_automation_enabled"] =
-        toml_edit::value(settings.qa_automation_enabled);
-    doc["auto_drive"]["cross_check_enabled"] =
-        toml_edit::value(settings.cross_check_enabled);
-    doc["auto_drive"]["observer_enabled"] =
-        toml_edit::value(settings.observer_enabled);
-    doc["auto_drive"]["coordinator_routing"] =
-        toml_edit::value(settings.coordinator_routing);
+    doc["auto_drive"]["qa_automation_enabled"] = toml_edit::value(settings.qa_automation_enabled);
+    doc["auto_drive"]["cross_check_enabled"] = toml_edit::value(settings.cross_check_enabled);
+    doc["auto_drive"]["observer_enabled"] = toml_edit::value(settings.observer_enabled);
+    doc["auto_drive"]["coordinator_routing"] = toml_edit::value(settings.coordinator_routing);
     doc["auto_drive"]["model"] = toml_edit::value(settings.model.trim());
     doc["auto_drive"]["model_reasoning_effort"] = toml_edit::value(
         settings
@@ -1178,7 +1180,8 @@ pub fn set_auto_drive_settings(
     if let Some(ref dir) = settings.checkpoint_dir {
         doc["auto_drive"]["checkpoint_dir"] = toml_edit::value(dir.display().to_string());
     }
-    doc["auto_drive"]["checkpoint_interval"] = toml_edit::value(settings.checkpoint_interval as i64);
+    doc["auto_drive"]["checkpoint_interval"] =
+        toml_edit::value(settings.checkpoint_interval as i64);
     doc["auto_drive"]["diagnostics_enabled"] = toml_edit::value(settings.diagnostics_enabled);
     doc["auto_drive"]["loop_threshold"] = toml_edit::value(settings.loop_threshold as i64);
     if let Some(budget) = settings.token_budget {
@@ -1190,7 +1193,8 @@ pub fn set_auto_drive_settings(
     if let Some(duration) = settings.duration_limit_seconds {
         doc["auto_drive"]["duration_limit_seconds"] = toml_edit::value(duration as i64);
     }
-    doc["auto_drive"]["max_concurrent_agents"] = toml_edit::value(settings.max_concurrent_agents as i64);
+    doc["auto_drive"]["max_concurrent_agents"] =
+        toml_edit::value(settings.max_concurrent_agents as i64);
     doc["auto_drive"]["audit_enabled"] = toml_edit::value(settings.audit_enabled);
     if let Some(ref path) = settings.audit_path {
         doc["auto_drive"]["audit_path"] = toml_edit::value(path.display().to_string());
@@ -1245,10 +1249,7 @@ pub fn set_github_check_on_push(code_home: &Path, enabled: bool) -> anyhow::Resu
 }
 
 /// Persist `github.actionlint_on_patch = <enabled>`.
-pub fn set_github_actionlint_on_patch(
-    code_home: &Path,
-    enabled: bool,
-) -> anyhow::Result<()> {
+pub fn set_github_actionlint_on_patch(code_home: &Path, enabled: bool) -> anyhow::Result<()> {
     let config_path = code_home.join(CONFIG_TOML_FILE);
     let read_path = resolve_code_path_for_read(code_home, Path::new(CONFIG_TOML_FILE));
     let mut doc = match std::fs::read_to_string(&read_path) {
@@ -1350,12 +1351,17 @@ pub fn set_project_access_mode(
         .and_then(|i| i.as_table())
         .is_none();
     if needs_proj_table {
-        projects_tbl.insert(project_key.as_str(), TomlItem::Table(toml_edit::Table::new()));
+        projects_tbl.insert(
+            project_key.as_str(),
+            TomlItem::Table(toml_edit::Table::new()),
+        );
     }
     let proj_tbl = projects_tbl
         .get_mut(project_key.as_str())
         .and_then(|i| i.as_table_mut())
-        .ok_or_else(|| anyhow::anyhow!(format!("failed to create projects.{} table", project_key)))?;
+        .ok_or_else(|| {
+            anyhow::anyhow!(format!("failed to create projects.{} table", project_key))
+        })?;
 
     // Write fields
     proj_tbl.insert(
@@ -1433,7 +1439,9 @@ pub fn add_project_allowed_command(
     let project_tbl = projects_tbl
         .get_mut(project_key.as_str())
         .and_then(|i| i.as_table_mut())
-        .ok_or_else(|| anyhow::anyhow!(format!("failed to create projects.{} table", project_key)))?;
+        .ok_or_else(|| {
+            anyhow::anyhow!(format!("failed to create projects.{} table", project_key))
+        })?;
 
     let mut argv_array = TomlArray::new();
     for arg in command {
@@ -1490,13 +1498,17 @@ pub fn add_project_allowed_command(
 
 /// List MCP servers from `CODEX_HOME/config.toml`.
 /// Returns `(enabled, disabled)` lists of `(name, McpServerConfig)`.
-pub fn list_mcp_servers(code_home: &Path) -> anyhow::Result<(
+pub fn list_mcp_servers(
+    code_home: &Path,
+) -> anyhow::Result<(
     Vec<(String, McpServerConfig)>,
     Vec<(String, McpServerConfig)>,
 )> {
     let read_path = resolve_code_path_for_read(code_home, Path::new(CONFIG_TOML_FILE));
     let doc_str = std::fs::read_to_string(&read_path).unwrap_or_default();
-    let doc = doc_str.parse::<DocumentMut>().unwrap_or_else(|_| DocumentMut::new());
+    let doc = doc_str
+        .parse::<DocumentMut>()
+        .unwrap_or_else(|_| DocumentMut::new());
 
     fn table_to_list(tbl: &toml_edit::Table) -> Vec<(String, McpServerConfig)> {
         let mut out = Vec::new();
@@ -1512,30 +1524,28 @@ pub fn list_mcp_servers(code_home: &Path) -> anyhow::Result<(
                                 .collect()
                         })
                         .unwrap_or_default();
-                    let env = t
-                        .get("env")
-                        .and_then(|v| {
-                            if let Some(tbl) = v.as_inline_table() {
-                                Some(
-                                    tbl.iter()
-                                        .filter_map(|(k, v)| {
-                                            v.as_str().map(|s| (k.to_string(), s.to_string()))
-                                        })
-                                        .collect::<HashMap<_, _>>(),
-                                )
-                            } else if let Some(table) = v.as_table() {
-                                Some(
-                                    table
-                                        .iter()
-                                        .filter_map(|(k, v)| {
-                                            v.as_str().map(|s| (k.to_string(), s.to_string()))
-                                        })
-                                        .collect::<HashMap<_, _>>(),
-                                )
-                            } else {
-                                None
-                            }
-                        });
+                    let env = t.get("env").and_then(|v| {
+                        if let Some(tbl) = v.as_inline_table() {
+                            Some(
+                                tbl.iter()
+                                    .filter_map(|(k, v)| {
+                                        v.as_str().map(|s| (k.to_string(), s.to_string()))
+                                    })
+                                    .collect::<HashMap<_, _>>(),
+                            )
+                        } else if let Some(table) = v.as_table() {
+                            Some(
+                                table
+                                    .iter()
+                                    .filter_map(|(k, v)| {
+                                        v.as_str().map(|s| (k.to_string(), s.to_string()))
+                                    })
+                                    .collect::<HashMap<_, _>>(),
+                            )
+                        } else {
+                            None
+                        }
+                    });
 
                     McpServerTransportConfig::Stdio {
                         command: command.to_string(),
@@ -1561,9 +1571,7 @@ pub fn list_mcp_servers(code_home: &Path) -> anyhow::Result<(
                     .and_then(|v| {
                         v.as_float()
                             .map(|f| Duration::try_from_secs_f64(f).ok())
-                            .or_else(|| {
-                                Some(v.as_integer().map(|i| Duration::from_secs(i as u64)))
-                            })
+                            .or_else(|| Some(v.as_integer().map(|i| Duration::from_secs(i as u64))))
                     })
                     .flatten()
                     .or_else(|| {
@@ -1577,9 +1585,7 @@ pub fn list_mcp_servers(code_home: &Path) -> anyhow::Result<(
                     .and_then(|v| {
                         v.as_float()
                             .map(|f| Duration::try_from_secs_f64(f).ok())
-                            .or_else(|| {
-                                Some(v.as_integer().map(|i| Duration::from_secs(i as u64)))
-                            })
+                            .or_else(|| Some(v.as_integer().map(|i| Duration::from_secs(i as u64))))
                     })
                     .flatten();
 
@@ -1615,13 +1621,12 @@ pub fn list_mcp_servers(code_home: &Path) -> anyhow::Result<(
 
 /// Add or update an MCP server under `[mcp_servers.<name>]`. If the same
 /// server exists under `mcp_servers_disabled`, it will be removed from there.
-pub fn add_mcp_server(
-    code_home: &Path,
-    name: &str,
-    cfg: McpServerConfig,
-) -> anyhow::Result<()> {
+pub fn add_mcp_server(code_home: &Path, name: &str, cfg: McpServerConfig) -> anyhow::Result<()> {
     // Validate server name for safety and compatibility with MCP tool naming.
-    if !name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-') {
+    if !name
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+    {
         return Err(anyhow::anyhow!(
             "invalid server name '{}': must match ^[a-zA-Z0-9_-]+$",
             name
@@ -1677,7 +1682,10 @@ pub fn add_mcp_server(
     }
 
     if let Some(duration) = startup_timeout_sec {
-        server_tbl.insert("startup_timeout_sec", toml_edit::value(duration.as_secs_f64()));
+        server_tbl.insert(
+            "startup_timeout_sec",
+            toml_edit::value(duration.as_secs_f64()),
+        );
     }
     if let Some(duration) = tool_timeout_sec {
         server_tbl.insert("tool_timeout_sec", toml_edit::value(duration.as_secs_f64()));
@@ -1701,11 +1709,7 @@ pub fn add_mcp_server(
 
 /// Enable/disable an MCP server by moving it between `[mcp_servers]` and
 /// `[mcp_servers_disabled]`. Returns `true` if a change was made.
-pub fn set_mcp_server_enabled(
-    code_home: &Path,
-    name: &str,
-    enabled: bool,
-) -> anyhow::Result<bool> {
+pub fn set_mcp_server_enabled(code_home: &Path, name: &str, enabled: bool) -> anyhow::Result<bool> {
     let config_path = code_home.join(CONFIG_TOML_FILE);
     let read_path = resolve_code_path_for_read(code_home, Path::new(CONFIG_TOML_FILE));
     let mut doc = match std::fs::read_to_string(&read_path) {
@@ -1858,7 +1862,10 @@ pub struct ConfigToml {
     pub otel: Option<OtelConfigToml>,
 
     /// Enable silent upgrades during startup when a newer release is available.
-    #[serde(default, deserialize_with = "deserialize_option_bool_from_maybe_string")]
+    #[serde(
+        default,
+        deserialize_with = "deserialize_option_bool_from_maybe_string"
+    )]
     pub auto_upgrade_enabled: Option<bool>,
 
     /// Optional external command to spawn for end-user notifications.
@@ -2167,7 +2174,9 @@ fn upgrade_legacy_model_slug(slug: &str) -> Option<String> {
     }
 
     // Upgrade Gemini 2.5 Pro to Gemini 3 Pro (or preview alias)
-    if slug.eq_ignore_ascii_case("gemini-2.5-pro") || slug.eq_ignore_ascii_case("gemini-3-pro-preview") {
+    if slug.eq_ignore_ascii_case("gemini-2.5-pro")
+        || slug.eq_ignore_ascii_case("gemini-3-pro-preview")
+    {
         return Some("gemini-3-pro".to_string());
     }
 
@@ -2332,10 +2341,7 @@ impl Config {
 
         // Project-specific overrides based on final resolved cwd (exact match)
         let project_key = resolved_cwd.to_string_lossy().to_string();
-        let project_override = cfg
-            .projects
-            .as_ref()
-            .and_then(|m| m.get(&project_key));
+        let project_override = cfg.projects.as_ref().and_then(|m| m.get(&project_key));
         // Resolve sandbox mode with correct precedence:
         // CLI override > per-project override > global config.toml > default
         let effective_sandbox_mode = sandbox_mode
@@ -2440,8 +2446,7 @@ impl Config {
             .model_reasoning_effort
             .or(cfg.model_reasoning_effort)
             .unwrap_or(ReasoningEffort::Medium);
-        let chat_reasoning_effort =
-            clamp_reasoning_effort_for_model(&model, chat_reasoning_effort);
+        let chat_reasoning_effort = clamp_reasoning_effort_for_model(&model, chat_reasoning_effort);
 
         let openai_model_info = get_model_info(&model_family);
         let model_context_window = cfg
@@ -2551,10 +2556,8 @@ impl Config {
                 .or(cfg.planning_model_reasoning_effort)
                 .unwrap_or(chat_reasoning_effort)
         };
-        let planning_model_reasoning_effort = clamp_reasoning_effort_for_model(
-            &planning_model,
-            planning_model_reasoning_effort,
-        );
+        let planning_model_reasoning_effort =
+            clamp_reasoning_effort_for_model(&planning_model, planning_model_reasoning_effort);
 
         let review_use_chat_model = config_profile
             .review_use_chat_model
@@ -2570,10 +2573,8 @@ impl Config {
         } else {
             review_model_reasoning_effort
         };
-        let review_model_reasoning_effort = clamp_reasoning_effort_for_model(
-            &review_model,
-            review_model_reasoning_effort,
-        );
+        let review_model_reasoning_effort =
+            clamp_reasoning_effort_for_model(&review_model, review_model_reasoning_effort);
 
         let auto_drive_use_chat_model = cfg.auto_drive_use_chat_model.unwrap_or(false);
 
@@ -2594,10 +2595,8 @@ impl Config {
             auto_drive.model_reasoning_effort = chat_reasoning_effort;
         }
 
-        auto_drive.model_reasoning_effort = clamp_reasoning_effort_for_model(
-            &auto_drive.model,
-            auto_drive.model_reasoning_effort,
-        );
+        auto_drive.model_reasoning_effort =
+            clamp_reasoning_effort_for_model(&auto_drive.model, auto_drive.model_reasoning_effort);
 
         let config = Self {
             model,
@@ -2686,9 +2685,7 @@ impl Config {
             use_experimental_streamable_shell_tool: cfg
                 .experimental_use_exec_command_tool
                 .unwrap_or(false),
-            use_experimental_use_rmcp_client: cfg
-                .experimental_use_rmcp_client
-                .unwrap_or(false),
+            use_experimental_use_rmcp_client: cfg.experimental_use_rmcp_client.unwrap_or(false),
             include_view_image_tool: include_view_image_tool_flag,
             env_ctx_v2: env_ctx_v2_flag,
             retention: crate::config_types::RetentionConfig::default(),
@@ -2698,10 +2695,7 @@ impl Config {
             using_chatgpt_auth,
             github: cfg.github.unwrap_or_default(),
             validation: cfg.validation.unwrap_or_default(),
-            subagent_commands: cfg
-                .subagents
-                .map(|s| s.commands)
-                .unwrap_or_default(),
+            subagent_commands: cfg.subagents.map(|s| s.commands).unwrap_or_default(),
             experimental_resume: cfg.experimental_resume,
             // Surface TUI notifications preference from config when present.
             tui_notifications: cfg
@@ -2730,16 +2724,16 @@ impl Config {
 
     /// Check if we're using ChatGPT authentication
     fn is_using_chatgpt_auth(code_home: &Path) -> bool {
-        use code_app_server_protocol::AuthMode;
         use crate::CodexAuth;
-        
+        use code_app_server_protocol::AuthMode;
+
         // Prefer ChatGPT when both ChatGPT tokens and an API key are present.
         match CodexAuth::from_code_home(code_home, AuthMode::ChatGPT, "code_cli_rs") {
             Ok(Some(auth)) => auth.mode == AuthMode::ChatGPT,
             _ => false,
         }
     }
-    
+
     fn load_instructions(code_dir: Option<&Path>) -> Option<String> {
         let code_home = code_dir?;
         let read_path = resolve_code_path_for_read(code_home, Path::new("AGENTS.md"));
@@ -2870,9 +2864,7 @@ fn legacy_code_home_dir() -> Option<PathBuf> {
     #[cfg(not(test))]
     {
         static LEGACY: std::sync::OnceLock<Option<PathBuf>> = std::sync::OnceLock::new();
-        LEGACY
-            .get_or_init(compute_legacy_code_home_dir)
-            .clone()
+        LEGACY.get_or_init(compute_legacy_code_home_dir).clone()
     }
 }
 
@@ -2973,12 +2965,8 @@ mod tests {
     impl Drop for EnvVarGuard {
         fn drop(&mut self) {
             match &self.original {
-                Some(val) => unsafe {
-                    std::env::set_var(self.key, val)
-                },
-                None => unsafe {
-                    std::env::remove_var(self.key)
-                },
+                Some(val) => unsafe { std::env::set_var(self.key, val) },
+                None => unsafe { std::env::remove_var(self.key) },
             }
         }
     }
@@ -3018,18 +3006,18 @@ persistence = "none"
     #[test]
     fn auto_upgrade_enabled_accepts_string_boolean() {
         let cfg_true = r#"auto_upgrade_enabled = "true""#;
-        let parsed_true = toml::from_str::<ConfigToml>(cfg_true)
-            .expect("string boolean should deserialize");
+        let parsed_true =
+            toml::from_str::<ConfigToml>(cfg_true).expect("string boolean should deserialize");
         assert_eq!(parsed_true.auto_upgrade_enabled, Some(true));
 
         let cfg_false = r#"auto_upgrade_enabled = "false""#;
-        let parsed_false = toml::from_str::<ConfigToml>(cfg_false)
-            .expect("string boolean should deserialize");
+        let parsed_false =
+            toml::from_str::<ConfigToml>(cfg_false).expect("string boolean should deserialize");
         assert_eq!(parsed_false.auto_upgrade_enabled, Some(false));
 
         let cfg_bool = r#"auto_upgrade_enabled = true"#;
-        let parsed_bool = toml::from_str::<ConfigToml>(cfg_bool)
-            .expect("boolean should deserialize");
+        let parsed_bool =
+            toml::from_str::<ConfigToml>(cfg_bool).expect("boolean should deserialize");
         assert_eq!(parsed_bool.auto_upgrade_enabled, Some(true));
     }
 
@@ -3228,8 +3216,7 @@ args = ["-y", "@upstash/context7-mcp"]
         )
         .await?;
 
-        let serialized =
-            tokio::fs::read_to_string(code_home.path().join(CONFIG_TOML_FILE)).await?;
+        let serialized = tokio::fs::read_to_string(code_home.path().join(CONFIG_TOML_FILE)).await?;
         let parsed: ConfigToml = toml::from_str(&serialized)?;
 
         assert_eq!(parsed.model.as_deref(), Some("gpt-5.1-codex"));
@@ -3291,8 +3278,7 @@ model = "gpt-4.1"
         )
         .await?;
 
-        let serialized =
-            tokio::fs::read_to_string(code_home.path().join(CONFIG_TOML_FILE)).await?;
+        let serialized = tokio::fs::read_to_string(code_home.path().join(CONFIG_TOML_FILE)).await?;
         let parsed: ConfigToml = toml::from_str(&serialized)?;
         let profile = parsed
             .profiles
@@ -3523,9 +3509,18 @@ model_verbosity = "high"
             &fixture.model_provider_map,
             &o3_profile_config.model_providers
         );
-        assert_eq!(ReasoningEffort::High, o3_profile_config.model_reasoning_effort);
-        assert_eq!(ReasoningSummary::Detailed, o3_profile_config.model_reasoning_summary);
-        assert_eq!(TextVerbosity::default(), o3_profile_config.model_text_verbosity);
+        assert_eq!(
+            ReasoningEffort::High,
+            o3_profile_config.model_reasoning_effort
+        );
+        assert_eq!(
+            ReasoningSummary::Detailed,
+            o3_profile_config.model_reasoning_summary
+        );
+        assert_eq!(
+            TextVerbosity::default(),
+            o3_profile_config.model_text_verbosity
+        );
         assert!(!o3_profile_config.disable_response_storage);
         assert_eq!(UriBasedFileOpener::VsCode, o3_profile_config.file_opener);
         assert_eq!(Tui::default(), o3_profile_config.tui);
@@ -3553,7 +3548,10 @@ model_verbosity = "high"
             fixture.code_home(),
         )?;
         assert_eq!("gpt-3.5-turbo", gpt3_profile_config.model);
-        assert_eq!(OPENAI_DEFAULT_REVIEW_MODEL, gpt3_profile_config.review_model);
+        assert_eq!(
+            OPENAI_DEFAULT_REVIEW_MODEL,
+            gpt3_profile_config.review_model
+        );
         assert_eq!(
             ReasoningEffort::High,
             gpt3_profile_config.review_model_reasoning_effort
@@ -3564,13 +3562,19 @@ model_verbosity = "high"
         );
         assert_eq!(Some(16_385), gpt3_profile_config.model_context_window);
         assert_eq!(Some(4_096), gpt3_profile_config.model_max_output_tokens);
-        assert_eq!("openai-chat-completions", gpt3_profile_config.model_provider_id);
+        assert_eq!(
+            "openai-chat-completions",
+            gpt3_profile_config.model_provider_id
+        );
         assert_eq!(
             fixture.openai_chat_completions_provider,
             gpt3_profile_config.model_provider
         );
         assert_eq!(Some("gpt3".to_string()), gpt3_profile_config.active_profile);
-        assert_eq!(AskForApproval::UnlessTrusted, gpt3_profile_config.approval_policy);
+        assert_eq!(
+            AskForApproval::UnlessTrusted,
+            gpt3_profile_config.approval_policy
+        );
         assert_eq!(
             SandboxPolicy::new_read_only_policy(),
             gpt3_profile_config.sandbox_policy
@@ -3581,9 +3585,18 @@ model_verbosity = "high"
             &fixture.model_provider_map,
             &gpt3_profile_config.model_providers
         );
-        assert_eq!(ReasoningEffort::default(), gpt3_profile_config.model_reasoning_effort);
-        assert_eq!(ReasoningSummary::default(), gpt3_profile_config.model_reasoning_summary);
-        assert_eq!(TextVerbosity::default(), gpt3_profile_config.model_text_verbosity);
+        assert_eq!(
+            ReasoningEffort::default(),
+            gpt3_profile_config.model_reasoning_effort
+        );
+        assert_eq!(
+            ReasoningSummary::default(),
+            gpt3_profile_config.model_reasoning_summary
+        );
+        assert_eq!(
+            TextVerbosity::default(),
+            gpt3_profile_config.model_text_verbosity
+        );
         assert!(!gpt3_profile_config.disable_response_storage);
 
         // Verify that loading without specifying a profile in ConfigOverrides
@@ -3600,10 +3613,22 @@ model_verbosity = "high"
         )?;
 
         assert_eq!(gpt3_profile_config.model, default_profile_config.model);
-        assert_eq!(gpt3_profile_config.active_profile, default_profile_config.active_profile);
-        assert_eq!(gpt3_profile_config.model_provider_id, default_profile_config.model_provider_id);
-        assert_eq!(gpt3_profile_config.approval_policy, default_profile_config.approval_policy);
-        assert_eq!(gpt3_profile_config.sandbox_policy, default_profile_config.sandbox_policy);
+        assert_eq!(
+            gpt3_profile_config.active_profile,
+            default_profile_config.active_profile
+        );
+        assert_eq!(
+            gpt3_profile_config.model_provider_id,
+            default_profile_config.model_provider_id
+        );
+        assert_eq!(
+            gpt3_profile_config.approval_policy,
+            default_profile_config.approval_policy
+        );
+        assert_eq!(
+            gpt3_profile_config.sandbox_policy,
+            default_profile_config.sandbox_policy
+        );
         Ok(())
     }
 
@@ -3636,7 +3661,10 @@ model_verbosity = "high"
         assert_eq!("openai", zdr_profile_config.model_provider_id);
         assert_eq!(fixture.openai_provider, zdr_profile_config.model_provider);
         assert_eq!(Some("zdr".to_string()), zdr_profile_config.active_profile);
-        assert_eq!(AskForApproval::OnFailure, zdr_profile_config.approval_policy);
+        assert_eq!(
+            AskForApproval::OnFailure,
+            zdr_profile_config.approval_policy
+        );
         assert_eq!(
             SandboxPolicy::new_read_only_policy(),
             zdr_profile_config.sandbox_policy
@@ -3667,7 +3695,10 @@ model_verbosity = "high"
             fixture.code_home(),
         )?;
         assert_eq!("gpt-5.1", gpt5_profile_config.model);
-        assert_eq!(OPENAI_DEFAULT_REVIEW_MODEL, gpt5_profile_config.review_model);
+        assert_eq!(
+            OPENAI_DEFAULT_REVIEW_MODEL,
+            gpt5_profile_config.review_model
+        );
         assert_eq!(
             ReasoningEffort::High,
             gpt5_profile_config.review_model_reasoning_effort
@@ -3681,7 +3712,10 @@ model_verbosity = "high"
         assert_eq!("openai", gpt5_profile_config.model_provider_id);
         assert_eq!(fixture.openai_provider, gpt5_profile_config.model_provider);
         assert_eq!(Some("gpt5".to_string()), gpt5_profile_config.active_profile);
-        assert_eq!(AskForApproval::OnFailure, gpt5_profile_config.approval_policy);
+        assert_eq!(
+            AskForApproval::OnFailure,
+            gpt5_profile_config.approval_policy
+        );
         assert_eq!(
             SandboxPolicy::new_read_only_policy(),
             gpt5_profile_config.sandbox_policy
@@ -3690,7 +3724,10 @@ model_verbosity = "high"
             gpt5_profile_config.model_reasoning_effort,
             ReasoningEffort::Medium | ReasoningEffort::High
         ));
-        assert_eq!(ReasoningSummary::Detailed, gpt5_profile_config.model_reasoning_summary);
+        assert_eq!(
+            ReasoningSummary::Detailed,
+            gpt5_profile_config.model_reasoning_summary
+        );
         assert!(matches!(
             gpt5_profile_config.model_text_verbosity,
             TextVerbosity::Medium | TextVerbosity::High
@@ -3722,7 +3759,10 @@ model_verbosity = "high"
 
         assert!(config.planning_use_chat_model);
         assert_eq!(config.planning_model, config.model);
-        assert_eq!(config.planning_model_reasoning_effort, config.model_reasoning_effort);
+        assert_eq!(
+            config.planning_model_reasoning_effort,
+            config.model_reasoning_effort
+        );
         Ok(())
     }
 
@@ -3739,11 +3779,8 @@ model_verbosity = "high"
             ..Default::default()
         };
 
-        let config = Config::load_from_base_config_with_overrides(
-            cfg,
-            overrides,
-            fixture.code_home(),
-        )?;
+        let config =
+            Config::load_from_base_config_with_overrides(cfg, overrides, fixture.code_home())?;
 
         assert!(config.planning_use_chat_model);
         assert_eq!(config.planning_model, config.model);
@@ -3775,7 +3812,10 @@ model_verbosity = "high"
 
         assert!(parsed.review_use_chat_model);
         assert_eq!(parsed.review_model.as_deref(), Some("custom-review"));
-        assert_eq!(parsed.review_model_reasoning_effort, Some(ReasoningEffort::High));
+        assert_eq!(
+            parsed.review_model_reasoning_effort,
+            Some(ReasoningEffort::High)
+        );
         Ok(())
     }
 
@@ -3820,15 +3860,15 @@ model_verbosity = "high"
             ..Default::default()
         };
 
-        let config = Config::load_from_base_config_with_overrides(
-            cfg,
-            overrides,
-            fixture.code_home(),
-        )?;
+        let config =
+            Config::load_from_base_config_with_overrides(cfg, overrides, fixture.code_home())?;
 
         assert!(config.auto_drive_use_chat_model);
         assert_eq!(config.auto_drive.model, config.model);
-        assert_eq!(config.auto_drive.model_reasoning_effort, config.model_reasoning_effort);
+        assert_eq!(
+            config.auto_drive.model_reasoning_effort,
+            config.model_reasoning_effort
+        );
         Ok(())
     }
 
@@ -3844,15 +3884,15 @@ model_verbosity = "high"
             ..Default::default()
         };
 
-        let config = Config::load_from_base_config_with_overrides(
-            cfg,
-            overrides,
-            fixture.code_home(),
-        )?;
+        let config =
+            Config::load_from_base_config_with_overrides(cfg, overrides, fixture.code_home())?;
 
         assert!(config.review_use_chat_model);
         assert_eq!(config.review_model, config.model);
-        assert_eq!(config.review_model_reasoning_effort, config.model_reasoning_effort);
+        assert_eq!(
+            config.review_model_reasoning_effort,
+            config.model_reasoning_effort
+        );
         Ok(())
     }
 
@@ -3901,13 +3941,13 @@ model_verbosity = "high"
             ..Default::default()
         };
 
-        let resolved = Config::load_from_base_config_with_overrides(
-            cfg,
-            overrides,
-            fixture.code_home(),
-        )?;
+        let resolved =
+            Config::load_from_base_config_with_overrides(cfg, overrides, fixture.code_home())?;
 
-        assert_eq!(resolved.compact_prompt_override.as_deref(), Some("cli prompt"));
+        assert_eq!(
+            resolved.compact_prompt_override.as_deref(),
+            Some("cli prompt")
+        );
         Ok(())
     }
 
@@ -3960,11 +4000,8 @@ model_verbosity = "high"
             ..Default::default()
         };
 
-        let loaded = Config::load_from_base_config_with_overrides(
-            cfg,
-            overrides,
-            fixture.code_home(),
-        )?;
+        let loaded =
+            Config::load_from_base_config_with_overrides(cfg, overrides, fixture.code_home())?;
 
         let enabled_names: std::collections::HashSet<String> = loaded
             .agents
@@ -4006,9 +4043,7 @@ model_verbosity = "high"
             .and_then(toml::Value::as_table)
             .ok_or_else(|| anyhow::anyhow!("project entry missing"))?;
         assert_eq!(
-            entry
-                .get("trust_level")
-                .and_then(toml::Value::as_str),
+            entry.get("trust_level").and_then(toml::Value::as_str),
             Some("trusted")
         );
 
@@ -4055,9 +4090,7 @@ model_verbosity = "high"
             .and_then(toml::Value::as_table)
             .ok_or_else(|| anyhow::anyhow!("project entry missing"))?;
         assert_eq!(
-            entry
-                .get("trust_level")
-                .and_then(toml::Value::as_str),
+            entry.get("trust_level").and_then(toml::Value::as_str),
             Some("trusted")
         );
 
@@ -4118,7 +4151,10 @@ mod agent_merge_tests {
             .find(|a| a.name.eq_ignore_ascii_case("code-gpt-5.1-codex-mini"))
             .expect("mini present");
 
-        assert!(!mini.enabled, "disabled state should persist for canonical slug");
+        assert!(
+            !mini.enabled,
+            "disabled state should persist for canonical slug"
+        );
         assert_eq!(
             merged
                 .iter()
