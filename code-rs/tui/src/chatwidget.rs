@@ -3961,6 +3961,7 @@ impl ChatWidget<'_> {
                 .is_some()
     }
 
+    #[cfg(debug_assertions)]
     fn reasoning_preview(lines: &[Line<'static>]) -> String {
         const MAX_LINES: usize = 3;
         const MAX_CHARS: usize = 120;
@@ -32491,7 +32492,10 @@ impl WidgetRef for &ChatWidget<'_> {
             preview: String,
         }
 
-        let mut height_mismatches: Vec<HeightMismatch> = Vec::new();
+        #[cfg(debug_assertions)]
+        let mut height_mismatches = Vec::<HeightMismatch>::new();
+        #[cfg(not(debug_assertions))]
+        let height_mismatches = Vec::<HeightMismatch>::new();
 
         for (offset, visible) in visible_slice.iter().enumerate() {
             let idx = start_idx + offset;
