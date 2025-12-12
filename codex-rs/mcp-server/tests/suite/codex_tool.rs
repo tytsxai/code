@@ -21,6 +21,7 @@ use mcp_types::ModelContextProtocolRequest;
 use mcp_types::RequestId;
 use pretty_assertions::assert_eq;
 use serde_json::json;
+use serial_test::serial;
 use tempfile::TempDir;
 use tokio::time::timeout;
 use wiremock::MockServer;
@@ -40,6 +41,7 @@ const DEFAULT_READ_TIMEOUT: std::time::Duration = std::time::Duration::from_secs
 /// elicitation request to the MCP and that sending the approval runs the
 /// command, as expected.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[serial(mcp_codex_tool)]
 async fn test_shell_command_approval_triggers_elicitation() {
     if env::var(CODEX_SANDBOX_NETWORK_DISABLED_ENV_VAR).is_ok() {
         println!(
@@ -207,6 +209,7 @@ fn create_expected_elicitation_request(
 /// Test that patch approval triggers an elicitation request to the MCP and that
 /// sending the approval applies the patch, as expected.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[serial(mcp_codex_tool)]
 async fn test_patch_approval_triggers_elicitation() {
     if env::var(CODEX_SANDBOX_NETWORK_DISABLED_ENV_VAR).is_ok() {
         println!(
@@ -320,6 +323,7 @@ async fn patch_approval_triggers_elicitation() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[serial(mcp_codex_tool)]
 async fn test_codex_tool_passes_base_instructions() {
     skip_if_no_network!();
 

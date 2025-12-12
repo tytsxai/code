@@ -42,7 +42,7 @@
 - `auto_resolve_review_attempts` 限制自动解决审查反馈的次数（默认 5）。
 
 ## 模型
-- 默认：模型 `gpt-5.1`，推理力度 `high`。
+- 默认：模型 `gpt-5.2`，推理力度 `high`。
 - 在设置中切换“use chat model”即可复用当前聊天模型/力度，而不是专用的 Auto Drive 模型。
 
 ## UI 展示
@@ -104,7 +104,7 @@
 
 ## 设置（config.toml）
 - 顶层键：`auto_drive_use_chat_model`（默认 false）、`auto_drive_observer_cadence`（默认 5）。
-- `[auto_drive]` 默认：`review_enabled=true`、`agents_enabled=true`、`qa_automation_enabled=true`、`cross_check_enabled=true`、`observer_enabled=true`、`coordinator_routing=true`、`continue_mode="ten-seconds"`、`model="gpt-5.1"`、`model_reasoning_effort="high"`、`auto_resolve_review_attempts=5`。
+- `[auto_drive]` 默认：`review_enabled=true`、`agents_enabled=true`、`qa_automation_enabled=true`、`cross_check_enabled=true`、`observer_enabled=true`、`coordinator_routing=true`、`continue_mode="ten-seconds"`、`model="gpt-5.2"`、`model_reasoning_effort="high"`、`auto_resolve_review_attempts=5`。
 - 以上均可在 TUI 的 `/auto settings` 或直接在 `config.toml` 中修改。
 
 ## 小贴士

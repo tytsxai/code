@@ -12,6 +12,7 @@
 > 💻 推荐使用 `codex-rs/` 作为主要代码目录（Rust 主实现）；`code-rs/`、`codex-cli/` 主要用于兼容和旧版支持。
 
 &ensp;
+
 ## v0.5.0 有哪些更新（2025 年 11 月 21 日）
 
 - **更名为 Every Code**——便于被发现，仍保留 `code` 这个简写。
@@ -25,6 +26,7 @@
 完整变更见 `docs/release-notes/RELEASE_NOTES.md`。
 
 &ensp;
+
 ## 为什么选择 Every Code
 
 - 🚀 **Auto Drive 编排**——多智能体自动化，能自愈并交付完整任务。
@@ -36,9 +38,11 @@
 - 🔒 **安全模式**——只读、审批与工作区沙箱。
 
 &ensp;
+
 ## AI 视频
 
 &ensp;
+
 <p align="center">
   <a href="https://youtu.be/UOASHZPruQk">
     <img src="docs/images/video-auto-drive-new-play.jpg" alt="播放 Auto Drive 介绍视频" width="100%">
@@ -47,6 +51,7 @@
 </p>
 
 &ensp;
+
 <p align="center">
   <a href="https://youtu.be/sV317OhiysQ">
     <img src="docs/images/video-v03-play.jpg" alt="播放多智能体宣传视频" width="100%">
@@ -54,8 +59,8 @@
   <strong>多智能体演示</strong>
 </p>
 
-
 &ensp;
+
 ## 快速开始
 
 ### 直接运行
@@ -74,6 +79,7 @@ code // 如果已被 VS Code 占用可用 `coder`
 注意：若已有 `code` 命令（如 VS Code），CLI 也会安装 `coder`。冲突时使用 `coder`。
 
 **认证方式**（三选一）：
+
 - **ChatGPT 登录**（Plus/Pro/Team；使用你计划可用的模型）
   - 运行 `code` 选择 "Sign in with ChatGPT"
 - **API Key**（按量计费）
@@ -107,9 +113,11 @@ qwen --version
 > ℹ️ 将 `export N_PREFIX="$HOME/.n"` 与 `export PATH="$N_PREFIX/bin:$PATH"`（加上 `npm_config_prefix` 的 bin 路径）写入 shell 配置，以便下次会话仍可访问这些 CLI。
 
 &ensp;
+
 ## 命令
 
 ### 浏览器
+
 ```bash
 # 连接外部 Chrome（CDP）
 /chrome        # 自动检测端口连接
@@ -121,6 +129,7 @@ qwen --version
 ```
 
 ### Agents
+
 ```bash
 # 规划改动（Claude、Gemini、GPT-5 共识）
 # 所有智能体审阅任务并创建合并计划
@@ -136,6 +145,7 @@ qwen --version
 ```
 
 ### Auto Drive
+
 ```bash
 # 交给多步骤自动化；Auto Drive 会协调智能体和审批
 /auto "Refactor the auth flow and add device login"
@@ -145,6 +155,7 @@ qwen --version
 ```
 
 ### 通用
+
 ```bash
 # 试用新主题
 /themes
@@ -177,21 +188,26 @@ Options:
 ```
 
 &ensp;
+
 ## 记忆与项目文档
 
 Every Code 可在会话间记忆上下文：
 
 1. **在项目根创建 `AGENTS.md` 或 `CLAUDE.md`**：
+
 ```markdown
 # Project Context
+
 This is a React TypeScript application with:
+
 - Authentication via JWT
 - PostgreSQL database
 - Express.js backend
 
 ## Key files:
+
 - `/src/auth/` - Authentication logic
-- `/src/api/` - API client code  
+- `/src/api/` - API client code
 - `/server/` - Backend services
 ```
 
@@ -199,6 +215,7 @@ This is a React TypeScript application with:
 3. **代码库分析**：自动理解项目结构
 
 &ensp;
+
 ## 非交互 / CI 模式
 
 适用于自动化与 CI/CD：
@@ -215,6 +232,7 @@ code --config output_format=json "list all TODO comments"
 ```
 
 &ensp;
+
 ## Model Context Protocol (MCP)
 
 Every Code 支持 MCP 扩展能力：
@@ -233,6 +251,7 @@ args = ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/project"]
 ```
 
 &ensp;
+
 ## 配置
 
 主配置文件：`~/.code/config.toml`
@@ -242,7 +261,7 @@ args = ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/project"]
 
 ```toml
 # Model settings
-model = "gpt-5.1"
+model = "gpt-5.2"
 model_provider = "openai"
 
 # Behavior
@@ -256,7 +275,7 @@ name = "light-photon"
 
 # Add config for specific models
 [profiles.gpt-5]
-model = "gpt-5.1"
+model = "gpt-5.2"
 model_provider = "openai"
 approval_policy = "never"
 model_reasoning_effort = "high"
@@ -271,6 +290,7 @@ model_reasoning_summary = "detailed"
 - `OPENAI_WIRE_API`：强制内置 OpenAI 提供商使用 `chat` 或 `responses` 接口
 
 &ensp;
+
 ## 激活器集成
 
 本项目特别支持第三方激活器（如 `codex-activator`），可实现一次激活即在多个版本间共享认证。
@@ -306,21 +326,27 @@ code exec "echo hello"
 详细说明请参阅 [docs/activator-integration.md](docs/activator-integration.md)。
 
 &ensp;
+
 ## FAQ
 
 **与原版有何不同？**
+
 > 本分支增加了浏览器集成、多智能体命令（`/plan`、`/solve`、`/code`）、主题系统与推理控制，并保持完全兼容。
 
 **可以复用现有的 Codex 配置吗？**
+
 > 可以。Every Code 会同时读取 `~/.code/`（主目录）与旧版 `~/.codex/`。只写入 `~/.code/`，切回 Codex 仍可运行；如发现冲突，可复制或删除旧文件。
 
 **能配合 ChatGPT Plus 吗？**
+
 > 完全可以。沿用原有的 “Sign in with ChatGPT” 流程。
 
 **数据安全吗？**
+
 > 安全。认证留在本机，我们不会代理你的凭据或对话。
 
 &ensp;
+
 ## 贡献
 
 欢迎贡献！Every Code 在保持与上游兼容的同时加入社区需求的功能。
@@ -332,6 +358,7 @@ code exec "echo hello"
 > 我们需要**定期同步上游更新**以获取 bug 修复和新功能，同时**保持本项目特色**。
 
 **核心原则：**
+
 - ✅ **保持特色**：激活器集成、中文文档、深色主题等本项目独有功能
 - ✅ **吸收更新**：定期合并上游的功能改进、安全修复、性能优化
 - ✅ **谨慎合并**：冲突时优先保留我们的特色修改，同时采纳上游改进
@@ -362,35 +389,41 @@ npm install
 5. 确认构建通过：`./build-fast.sh`
 6. 提交 PR
 
-
 &ensp;
+
 ## 法律与使用
 
 ### 许可证与归属
+
 - 本项目是 `openai/codex` 的社区分支，沿用 **Apache-2.0** 许可证并保留上游 LICENSE 与 NOTICE。
 - **Every Code**（Code）**并非** OpenAI 关联或认可。
 
 ### 你的责任
+
 通过 Every Code 使用 OpenAI、Anthropic 或 Google 服务即表示你同意**它们的条款与政策**。尤其：
+
 - **不要** 在非预期路径下抓取/提取内容。
 - **不要** 绕过或干扰限流、配额或安全措施。
 - 使用你**自己的**账号；不要共享或轮换账号以逃避限制。
 - 若配置其他模型提供商，你需遵守相应条款。
 
 ### 隐私
+
 - 认证文件位于 `~/.code/auth.json`
 - 你发送给模型的输入/输出遵循各提供商条款与隐私政策；请查看这些文档（以及组织级数据共享设置）。
 
 ### 可能变更
+
 AI 提供商可能调整资格、限额、模型或认证流程。Every Code 同时支持 ChatGPT 登录与 API Key 模式，可按需选择（本地/爱好 vs CI/自动化）。
 
 &ensp;
+
 ## 许可证
 
 Apache 2.0 - 详见 [LICENSE](LICENSE)。
 
 Every Code 是原始 Codex CLI 的社区分支，在保持兼容的同时提供开发者社区期待的增强功能。
 
-&ensp;
----
+## &ensp;
+
 **需要帮助？** 在 [GitHub](https://github.com/just-every/code/issues) 提交 issue 或查看我们的文档。

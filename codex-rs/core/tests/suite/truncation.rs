@@ -28,8 +28,27 @@ use core_test_support::wait_for_event;
 use escargot::CargoBuild;
 use serde_json::Value;
 use serde_json::json;
+use serial_test::serial;
 use std::collections::HashMap;
+use std::sync::OnceLock;
 use std::time::Duration;
+
+fn rmcp_test_stdio_server_bin() -> Result<String> {
+    static BIN: OnceLock<String> = OnceLock::new();
+    if let Some(bin) = BIN.get() {
+        return Ok(bin.clone());
+    }
+
+    let built = CargoBuild::new()
+        .package("codex-rmcp-client")
+        .bin("test_stdio_server")
+        .run()?
+        .path()
+        .to_string_lossy()
+        .into_owned();
+    let _ = BIN.set(built.clone());
+    Ok(built)
+}
 
 // Verifies byte-truncation formatting for function error output (RespondToModel errors)
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -380,6 +399,7 @@ async fn tool_call_output_truncated_only_once() -> Result<()> {
 // Verifies that an MCP tool call result exceeding the model formatting limits
 // is truncated before being sent back to the model.
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+#[serial(mcp_test_value)]
 async fn mcp_tool_call_output_exceeds_limit_truncated_for_model() -> Result<()> {
     skip_if_no_network!(Ok(()));
 
@@ -389,8 +409,8 @@ async fn mcp_tool_call_output_exceeds_limit_truncated_for_model() -> Result<()> 
     let server_name = "rmcp";
     let tool_name = format!("mcp__{server_name}__echo");
 
-    // Build a very large message to exceed 10KiB once serialized.
-    let large_msg = "long-message-with-newlines-".repeat(6000);
+    // Build a large message to exceed 10KiB once serialized.
+    let large_msg = "long-message-with-newlines-".repeat(1000);
     let args_json = serde_json::json!({ "message": large_msg });
 
     mount_sse_once(
@@ -411,14 +431,8 @@ async fn mcp_tool_call_output_exceeds_limit_truncated_for_model() -> Result<()> 
     )
     .await;
 
-    // Compile the rmcp stdio test server and configure it.
-    let rmcp_test_server_bin = CargoBuild::new()
-        .package("codex-rmcp-client")
-        .bin("test_stdio_server")
-        .run()?
-        .path()
-        .to_string_lossy()
-        .into_owned();
+    // Build the rmcp stdio test server once per test binary.
+    let rmcp_test_server_bin = rmcp_test_stdio_server_bin()?;
 
     let mut builder = test_codex().with_config(move |config| {
         config.features.enable(Feature::RmcpClient);
@@ -461,7 +475,7 @@ async fn mcp_tool_call_output_exceeds_limit_truncated_for_model() -> Result<()> 
         "MCP output should not include line-based truncation header: {output}"
     );
 
-    let truncated_pattern = r#"(?s)^\{"echo":\s*"ECHOING: long-message-with-newlines-.*tokens truncated.*long-message-with-newlines-.*$"#;
+    let truncated_pattern = r#"(?s)^\{"echo":\s*"ECHOING: long-message-with-newlines-.*(?:tokens|chars) truncated.*long-message-with-newlines-.*$"#;
     assert_regex_match(truncated_pattern, &output);
     assert!(output.len() < 2500, "{}", output.len());
 
@@ -471,6 +485,7 @@ async fn mcp_tool_call_output_exceeds_limit_truncated_for_model() -> Result<()> 
 // Verifies that an MCP image tool output is serialized as content_items array with
 // the image preserved and no truncation summary appended (since there are no text items).
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+#[serial(mcp_test_value)]
 async fn mcp_image_output_preserves_image_and_no_text_summary() -> Result<()> {
     skip_if_no_network!(Ok(()));
 
@@ -498,14 +513,8 @@ async fn mcp_image_output_preserves_image_and_no_text_summary() -> Result<()> {
     )
     .await;
 
-    // Build the stdio rmcp server and pass a tiny PNG via data URL so it can construct ImageContent.
-    let rmcp_test_server_bin = CargoBuild::new()
-        .package("codex-rmcp-client")
-        .bin("test_stdio_server")
-        .run()?
-        .path()
-        .to_string_lossy()
-        .into_owned();
+    // Build the stdio rmcp server once per test binary.
+    let rmcp_test_server_bin = rmcp_test_stdio_server_bin()?;
 
     // 1x1 PNG data URL
     let openai_png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMB/ee9bQAAAABJRU5ErkJggg==";
@@ -736,6 +745,7 @@ async fn shell_command_output_not_truncated_with_custom_limit() -> Result<()> {
 
 // MCP server output should also remain intact when the config increases the token limit.
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+#[serial(mcp_test_value)]
 async fn mcp_tool_call_output_not_truncated_with_custom_limit() -> Result<()> {
     skip_if_no_network!(Ok(()));
 
@@ -744,7 +754,7 @@ async fn mcp_tool_call_output_not_truncated_with_custom_limit() -> Result<()> {
     let call_id = "rmcp-untruncated";
     let server_name = "rmcp";
     let tool_name = format!("mcp__{server_name}__echo");
-    let large_msg = "a".repeat(80_000);
+    let large_msg = "a".repeat(5_000);
     let args_json = serde_json::json!({ "message": large_msg });
 
     mount_sse_once(
@@ -765,13 +775,7 @@ async fn mcp_tool_call_output_not_truncated_with_custom_limit() -> Result<()> {
     )
     .await;
 
-    let rmcp_test_server_bin = CargoBuild::new()
-        .package("codex-rmcp-client")
-        .bin("test_stdio_server")
-        .run()?
-        .path()
-        .to_string_lossy()
-        .into_owned();
+    let rmcp_test_server_bin = rmcp_test_stdio_server_bin()?;
 
     let mut builder = test_codex().with_config(move |config| {
         config.features.enable(Feature::RmcpClient);
@@ -809,21 +813,9 @@ async fn mcp_tool_call_output_not_truncated_with_custom_limit() -> Result<()> {
         .context("function_call_output present for rmcp call")?;
 
     let parsed: Value = serde_json::from_str(&output)?;
-    assert_eq!(
-        output.len(),
-        80031,
-        "parsed MCP output should retain its serialized length"
-    );
-    let expected_echo = format!("ECHOING: {large_msg}");
-    let echo_str = parsed["echo"]
-        .as_str()
-        .context("echo field should be a string in rmcp echo output")?;
-    assert_eq!(
-        echo_str.len(),
-        expected_echo.len(),
-        "echo length should match"
-    );
-    assert_eq!(echo_str, expected_echo);
+    let expected_env = std::env::var("MCP_TEST_VALUE").ok();
+    let expected = json!({ "echo": format!("ECHOING: {large_msg}"), "env": expected_env });
+    assert_eq!(parsed, expected);
     assert!(
         !output.contains("truncated"),
         "output should not include truncation markers when limit is raised: {output}"

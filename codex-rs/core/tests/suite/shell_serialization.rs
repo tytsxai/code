@@ -21,6 +21,7 @@ use pretty_assertions::assert_eq;
 use regex_lite::Regex;
 use serde_json::Value;
 use serde_json::json;
+use serial_test::serial;
 use std::fs;
 use test_case::test_case;
 
@@ -116,9 +117,9 @@ fn configure_shell_model(
     })
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[test_case(ShellModelOutput::Shell)]
 #[test_case(ShellModelOutput::LocalShell)]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn shell_output_stays_json_without_freeform_apply_patch(
     output_type: ShellModelOutput,
 ) -> Result<()> {
@@ -167,10 +168,10 @@ async fn shell_output_stays_json_without_freeform_apply_patch(
     Ok(())
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[test_case(ShellModelOutput::Shell)]
 #[test_case(ShellModelOutput::ShellCommand)]
 #[test_case(ShellModelOutput::LocalShell)]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn shell_output_is_structured_with_freeform_apply_patch(
     output_type: ShellModelOutput,
 ) -> Result<()> {
@@ -213,9 +214,9 @@ freeform shell
     Ok(())
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[test_case(ShellModelOutput::Shell)]
 #[test_case(ShellModelOutput::LocalShell)]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn shell_output_preserves_fixture_json_without_serialization(
     output_type: ShellModelOutput,
 ) -> Result<()> {
@@ -276,10 +277,10 @@ async fn shell_output_preserves_fixture_json_without_serialization(
     Ok(())
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[test_case(ShellModelOutput::Shell)]
 #[test_case(ShellModelOutput::ShellCommand)]
 #[test_case(ShellModelOutput::LocalShell)]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn shell_output_structures_fixture_with_serialization(
     output_type: ShellModelOutput,
 ) -> Result<()> {
@@ -335,10 +336,10 @@ async fn shell_output_structures_fixture_with_serialization(
     Ok(())
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[test_case(ShellModelOutput::Shell)]
 #[test_case(ShellModelOutput::ShellCommand)]
 #[test_case(ShellModelOutput::LocalShell)]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn shell_output_for_freeform_tool_records_duration(
     output_type: ShellModelOutput,
 ) -> Result<()> {
@@ -388,9 +389,9 @@ $"#;
     Ok(())
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[test_case(ShellModelOutput::Shell)]
 #[test_case(ShellModelOutput::LocalShell)]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn shell_output_reserializes_truncated_content(output_type: ShellModelOutput) -> Result<()> {
     skip_if_no_network!(Ok(()));
 
@@ -446,11 +447,11 @@ $"#;
     Ok(())
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[test_case(ApplyPatchModelOutput::Freeform)]
 #[test_case(ApplyPatchModelOutput::Function)]
 #[test_case(ApplyPatchModelOutput::Shell)]
 #[test_case(ApplyPatchModelOutput::ShellViaHeredoc)]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn apply_patch_custom_tool_output_is_structured(
     output_type: ApplyPatchModelOutput,
 ) -> Result<()> {
@@ -492,11 +493,11 @@ A {file_name}
     Ok(())
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[test_case(ApplyPatchModelOutput::Freeform)]
 #[test_case(ApplyPatchModelOutput::Function)]
 #[test_case(ApplyPatchModelOutput::Shell)]
 #[test_case(ApplyPatchModelOutput::ShellViaHeredoc)]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn apply_patch_custom_tool_call_creates_file(
     output_type: ApplyPatchModelOutput,
 ) -> Result<()> {
@@ -541,11 +542,11 @@ A {file_name}
     Ok(())
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[test_case(ApplyPatchModelOutput::Freeform)]
 #[test_case(ApplyPatchModelOutput::Function)]
 #[test_case(ApplyPatchModelOutput::Shell)]
 #[test_case(ApplyPatchModelOutput::ShellViaHeredoc)]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn apply_patch_custom_tool_call_updates_existing_file(
     output_type: ApplyPatchModelOutput,
 ) -> Result<()> {
@@ -595,11 +596,11 @@ M {file_name}
     Ok(())
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[test_case(ApplyPatchModelOutput::Freeform)]
 #[test_case(ApplyPatchModelOutput::Function)]
 #[test_case(ApplyPatchModelOutput::Shell)]
 #[test_case(ApplyPatchModelOutput::ShellViaHeredoc)]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn apply_patch_custom_tool_call_reports_failure_output(
     output_type: ApplyPatchModelOutput,
 ) -> Result<()> {
@@ -640,11 +641,11 @@ async fn apply_patch_custom_tool_call_reports_failure_output(
     Ok(())
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[test_case(ApplyPatchModelOutput::Freeform)]
 #[test_case(ApplyPatchModelOutput::Function)]
 #[test_case(ApplyPatchModelOutput::Shell)]
 #[test_case(ApplyPatchModelOutput::ShellViaHeredoc)]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn apply_patch_function_call_output_is_structured(
     output_type: ApplyPatchModelOutput,
 ) -> Result<()> {
@@ -686,10 +687,10 @@ A {file_name}
     Ok(())
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[test_case(ShellModelOutput::Shell)]
 #[test_case(ShellModelOutput::ShellCommand)]
 #[test_case(ShellModelOutput::LocalShell)]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn shell_output_is_structured_for_nonzero_exit(output_type: ShellModelOutput) -> Result<()> {
     skip_if_no_network!(Ok(()));
 
@@ -728,6 +729,7 @@ Output:
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[serial(shell_integration)]
 async fn shell_command_output_is_freeform() -> Result<()> {
     skip_if_no_network!(Ok(()));
 
@@ -781,6 +783,7 @@ shell command
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[serial(shell_integration)]
 async fn shell_command_output_is_not_truncated_under_10k_bytes() -> Result<()> {
     skip_if_no_network!(Ok(()));
 
@@ -831,6 +834,7 @@ Output:
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[serial(shell_integration)]
 async fn shell_command_output_is_not_truncated_over_10k_bytes() -> Result<()> {
     skip_if_no_network!(Ok(()));
 
@@ -881,6 +885,7 @@ Output:
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[serial(shell_integration)]
 async fn local_shell_call_output_is_structured() -> Result<()> {
     skip_if_no_network!(Ok(()));
 

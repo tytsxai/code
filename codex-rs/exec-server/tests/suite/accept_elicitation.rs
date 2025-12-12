@@ -30,11 +30,20 @@ use tempfile::TempDir;
 /// command should be run privileged outside the sandbox.
 #[tokio::test(flavor = "current_thread")]
 async fn accept_elicitation_for_prompt_rule() -> Result<()> {
+    if std::process::Command::new("dotslash")
+        .arg("--version")
+        .output()
+        .is_err()
+    {
+        eprintln!("dotslash not installed; skipping exec-server elicitation test.");
+        return Ok(());
+    }
+
     // Configure a stdio transport that will launch the MCP server using
     // $CODEX_HOME with an execpolicy that prompts for `git init` commands.
     let codex_home = TempDir::new()?;
-    write_default_execpolicy(
-        r#"
+    let git = which::which("git")?;
+    let execpolicy = r#"
 # Create a rule with `decision = "prompt"` to exercise the elicitation flow.
 prefix_rule(
   pattern = ["git", "init"],
@@ -43,17 +52,15 @@ prefix_rule(
     "git init ."
   ],
 )
-"#,
-        codex_home.as_ref(),
-    )
-    .await?;
+"#
+    .to_string();
+    write_default_execpolicy(&execpolicy, codex_home.as_ref()).await?;
     let dotslash_cache_temp_dir = TempDir::new()?;
     let dotslash_cache = dotslash_cache_temp_dir.path();
     let transport = create_transport(codex_home.as_ref(), dotslash_cache).await?;
 
     // Create an MCP client that approves expected elicitation messages.
     let project_root = TempDir::new()?;
-    let git = which::which("git")?;
     let project_root_path = project_root.path().canonicalize().unwrap();
     let expected_elicitation_message = format!(
         "Allow agent to run `{} init .` in `{}`?",

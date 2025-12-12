@@ -61,7 +61,7 @@ pub mod edit;
 pub mod profile;
 pub mod types;
 
-const OPENAI_DEFAULT_REVIEW_MODEL: &str = "gpt-5.1-codex-max";
+const OPENAI_DEFAULT_REVIEW_MODEL: &str = "gpt-5.2";
 
 /// Maximum number of bytes of the documentation that will be embedded. Larger
 /// files are *silently truncated* to this size so we do not take up too much of
@@ -87,7 +87,7 @@ pub struct Config {
     /// Optional override of model selection.
     pub model: Option<String>,
 
-    /// Model used specifically for review sessions. Defaults to "gpt-5.1-codex-max".
+    /// Model used specifically for review sessions. Defaults to "gpt-5.2".
     pub review_model: String,
 
     /// Size of the context window for the model, in tokens.

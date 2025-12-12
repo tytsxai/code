@@ -5,7 +5,7 @@
 ## 基础示例：指定模型与审批策略
 
 ```toml
-model = "gpt-5.1"
+model = "gpt-5.2"
 model_provider = "openai"
 approval_policy = "on-request"  # 需要时询问审批
 sandbox_mode = "workspace-write"  # 允许修改当前工作区
@@ -30,7 +30,7 @@ registry=https://registry.npmmirror.com
 
 ```toml
 [profiles.gpt5]
-model = "gpt-5.1"
+model = "gpt-5.2"
 model_provider = "openai"
 approval_policy = "never"
 model_reasoning_effort = "high"

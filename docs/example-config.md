@@ -18,11 +18,11 @@ Use this example configuration as a starting point. For an explanation of each f
 # Core Model Selection
 ################################################################################
 
-# Primary model used by Codex. Default: "gpt-5.1-codex-max" on all platforms.
-model = "gpt-5.1-codex-max"
+# Primary model used by Codex. Default: "gpt-5.2" on all platforms.
+model = "gpt-5.2"
 
-# Model used by the /review feature (code reviews). Default: "gpt-5.1-codex-max".
-review_model = "gpt-5.1-codex-max"
+# Model used by the /review feature (code reviews). Default: "gpt-5.2".
+review_model = "gpt-5.2"
 
 # Provider id selected from [model_providers]. Default: "openai".
 model_provider = "openai"
@@ -31,7 +31,7 @@ model_provider = "openai"
 # Uncomment to force values.
 # model_context_window = 128000       # tokens; default: auto for model
 # model_auto_compact_token_limit = 0  # disable/override auto; default: model family specific
-# tool_output_token_limit = 10000  # tokens stored per tool output; default: 10000 for gpt-5.1-codex-max
+# tool_output_token_limit = 10000  # tokens stored per tool output; default: 10000 for gpt-5.2
 
 ################################################################################
 # Reasoning & Verbosity (Responses API capable models)

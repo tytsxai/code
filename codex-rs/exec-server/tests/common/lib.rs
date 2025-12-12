@@ -22,6 +22,7 @@ use std::process::Stdio;
 use std::sync::Arc;
 use std::sync::Mutex;
 use tokio::process::Command;
+use which::which;
 
 pub async fn create_transport<P>(
     codex_home: P,
@@ -39,16 +40,18 @@ where
         .join("suite")
         .join("bash");
 
-    // Need to ensure the artifact associated with the bash DotSlash file is
-    // available before it is run in a read-only sandbox.
-    let status = Command::new("dotslash")
-        .arg("--")
-        .arg("fetch")
-        .arg(bash.clone())
-        .env("DOTSLASH_CACHE", dotslash_cache.as_ref())
-        .status()
-        .await?;
-    assert!(status.success(), "dotslash fetch failed: {status:?}");
+    if which("dotslash").is_ok() {
+        // Need to ensure the artifact associated with the bash DotSlash file is
+        // available before it is run in a read-only sandbox.
+        let status = Command::new("dotslash")
+            .arg("--")
+            .arg("fetch")
+            .arg(bash.clone())
+            .env("DOTSLASH_CACHE", dotslash_cache.as_ref())
+            .status()
+            .await?;
+        assert!(status.success(), "dotslash fetch failed: {status:?}");
+    }
 
     let transport =
         TokioChildProcess::new(Command::new(mcp_executable.get_program()).configure(|cmd| {

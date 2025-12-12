@@ -68,6 +68,7 @@ impl McpProcess {
         cmd.stderr(Stdio::piped());
         cmd.env("CODEX_HOME", codex_home);
         cmd.env("RUST_LOG", "debug");
+        cmd.env_remove(codex_core::default_client::CODEX_INTERNAL_ORIGINATOR_OVERRIDE_ENV_VAR);
 
         for (k, v) in env_overrides {
             match v {

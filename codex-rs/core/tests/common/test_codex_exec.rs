@@ -15,7 +15,8 @@ impl TestCodexExecBuilder {
             .expect("should find binary for codex-exec");
         cmd.current_dir(self.cwd.path())
             .env("CODEX_HOME", self.home.path())
-            .env(CODEX_API_KEY_ENV_VAR, "dummy");
+            .env(CODEX_API_KEY_ENV_VAR, "dummy")
+            .env_remove(codex_core::default_client::CODEX_INTERNAL_ORIGINATOR_OVERRIDE_ENV_VAR);
         cmd
     }
     pub fn cmd_with_server(&self, server: &MockServer) -> assert_cmd::Command {

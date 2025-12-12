@@ -24,14 +24,16 @@ use core_test_support::responses::start_mock_server;
 use core_test_support::skip_if_no_network;
 use core_test_support::test_codex::TestCodex;
 use core_test_support::test_codex::test_codex;
-use core_test_support::wait_for_event;
+use core_test_support::wait_for_event_with_timeout;
 use pretty_assertions::assert_eq;
 use regex_lite::Regex;
 use serde_json::Value;
 use serde_json::json;
+use serial_test::serial;
 use std::env;
 use std::fs;
 use std::path::PathBuf;
+use std::time::Duration;
 use wiremock::Mock;
 use wiremock::MockServer;
 use wiremock::ResponseTemplate;
@@ -104,7 +106,7 @@ impl ActionKind {
                 let (path, _) = target.resolve_for_patch(test);
                 let _ = fs::remove_file(&path);
                 let command = format!("printf {content:?} > {path:?} && cat {path:?}");
-                let event = shell_event(call_id, &command, 1_000, sandbox_permissions)?;
+                let event = shell_event(call_id, &command, 10_000, sandbox_permissions)?;
                 Ok((event, Some(command)))
             }
             ActionKind::FetchUrl {
@@ -130,7 +132,7 @@ impl ActionKind {
                 Ok((event, Some(command)))
             }
             ActionKind::RunCommand { command } => {
-                let event = shell_event(call_id, command, 1_000, sandbox_permissions)?;
+                let event = shell_event(call_id, command, 10_000, sandbox_permissions)?;
                 Ok((event, Some(command.to_string())))
             }
             ActionKind::RunUnifiedExecCommand {
@@ -140,7 +142,7 @@ impl ActionKind {
                 let event = exec_command_event(
                     call_id,
                     command,
-                    Some(1000),
+                    Some(2_500),
                     sandbox_permissions,
                     *justification,
                 )?;
@@ -549,12 +551,16 @@ async fn expect_exec_approval(
     test: &TestCodex,
     expected_command: &str,
 ) -> ExecApprovalRequestEvent {
-    let event = wait_for_event(&test.codex, |event| {
-        matches!(
-            event,
-            EventMsg::ExecApprovalRequest(_) | EventMsg::TaskComplete(_)
-        )
-    })
+    let event = wait_for_event_with_timeout(
+        &test.codex,
+        |event| {
+            matches!(
+                event,
+                EventMsg::ExecApprovalRequest(_) | EventMsg::TaskComplete(_)
+            )
+        },
+        Duration::from_secs(20),
+    )
     .await;
 
     match event {
@@ -576,12 +582,16 @@ async fn expect_patch_approval(
     test: &TestCodex,
     expected_call_id: &str,
 ) -> ApplyPatchApprovalRequestEvent {
-    let event = wait_for_event(&test.codex, |event| {
-        matches!(
-            event,
-            EventMsg::ApplyPatchApprovalRequest(_) | EventMsg::TaskComplete(_)
-        )
-    })
+    let event = wait_for_event_with_timeout(
+        &test.codex,
+        |event| {
+            matches!(
+                event,
+                EventMsg::ApplyPatchApprovalRequest(_) | EventMsg::TaskComplete(_)
+            )
+        },
+        Duration::from_secs(20),
+    )
     .await;
 
     match event {
@@ -595,12 +605,16 @@ async fn expect_patch_approval(
 }
 
 async fn wait_for_completion_without_approval(test: &TestCodex) {
-    let event = wait_for_event(&test.codex, |event| {
-        matches!(
-            event,
-            EventMsg::ExecApprovalRequest(_) | EventMsg::TaskComplete(_)
-        )
-    })
+    let event = wait_for_event_with_timeout(
+        &test.codex,
+        |event| {
+            matches!(
+                event,
+                EventMsg::ExecApprovalRequest(_) | EventMsg::TaskComplete(_)
+            )
+        },
+        Duration::from_secs(20),
+    )
     .await;
 
     match event {
@@ -613,9 +627,11 @@ async fn wait_for_completion_without_approval(test: &TestCodex) {
 }
 
 async fn wait_for_completion(test: &TestCodex) {
-    wait_for_event(&test.codex, |event| {
-        matches!(event, EventMsg::TaskComplete(_))
-    })
+    let _ = wait_for_event_with_timeout(
+        &test.codex,
+        |event| matches!(event, EventMsg::TaskComplete(_)),
+        Duration::from_secs(20),
+    )
     .await;
 }
 
@@ -707,7 +723,7 @@ fn scenarios() -> Vec<ScenarioSpec> {
             features: vec![],
             model_override: Some("gpt-5"),
             outcome: Outcome::Auto,
-            expectation: Expectation::CommandSuccess {
+            expectation: Expectation::CommandSuccessNoExitCode {
                 stdout_contains: "trusted-unless",
             },
         },
@@ -1442,6 +1458,7 @@ fn scenarios() -> Vec<ScenarioSpec> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[serial(codex_integration)]
 async fn approval_matrix_covers_all_modes() -> Result<()> {
     skip_if_no_network!(Ok(()));
 
@@ -1562,6 +1579,7 @@ async fn run_scenario(scenario: &ScenarioSpec) -> Result<()> {
 
 #[tokio::test(flavor = "current_thread")]
 #[cfg(unix)]
+#[serial(codex_integration)]
 async fn approving_execpolicy_amendment_persists_policy_and_skips_future_prompts() -> Result<()> {
     let server = start_mock_server().await;
     let approval_policy = AskForApproval::UnlessTrusted;

@@ -14,14 +14,16 @@ impl Language {
 
     fn from_env(codex_lang: Option<String>, lang: Option<String>) -> Self {
         if let Some(lang) = codex_lang
-            && Self::is_zh(&lang) {
-                return Self::Chinese;
-            }
+            && Self::is_zh(&lang)
+        {
+            return Self::Chinese;
+        }
 
         if let Some(lang) = lang
-            && Self::is_zh(&lang) {
-                return Self::Chinese;
-            }
+            && Self::is_zh(&lang)
+        {
+            return Self::Chinese;
+        }
 
         Self::English
     }
@@ -45,7 +47,10 @@ mod tests {
     #[test]
     fn detect_prefers_codex_lang() {
         assert_eq!(
-            Language::from_env(Some("zh_CN.UTF-8".to_string()), Some("en_US.UTF-8".to_string())),
+            Language::from_env(
+                Some("zh_CN.UTF-8".to_string()),
+                Some("en_US.UTF-8".to_string())
+            ),
             Language::Chinese
         );
     }

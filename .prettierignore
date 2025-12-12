@@ -5,3 +5,6 @@ pnpm-lock.yaml
 prompt.md
 *_prompt.md
 *_instructions.md
+
+# Symlink to AGENTS.md; prettier errors on symlinks.
+CLAUDE.md

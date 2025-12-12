@@ -43,5 +43,6 @@ core_test_support = { workspace = true }
 mcp_test_support = { workspace = true }
 os_info = { workspace = true }
 pretty_assertions = { workspace = true }
+serial_test = { workspace = true }
 tempfile = { workspace = true }
 wiremock = { workspace = true }

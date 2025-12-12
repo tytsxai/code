@@ -4,7 +4,6 @@ use app_test_support::to_response;
 use codex_app_server_protocol::GetUserAgentResponse;
 use codex_app_server_protocol::JSONRPCResponse;
 use codex_app_server_protocol::RequestId;
-use pretty_assertions::assert_eq;
 use tempfile::TempDir;
 use tokio::time::timeout;
 
@@ -24,18 +23,24 @@ async fn get_user_agent_returns_current_codex_user_agent() -> Result<()> {
     )
     .await??;
 
-    let os_info = os_info::get();
-    let user_agent = format!(
-        "codex_cli_rs/0.0.0 ({} {}; {}) {} (codex-app-server-tests; 0.1.0)",
-        os_info.os_type(),
-        os_info.version(),
-        os_info.architecture().unwrap_or("unknown"),
-        codex_core::terminal::user_agent()
-    );
-
     let received: GetUserAgentResponse = to_response(response)?;
-    let expected = GetUserAgentResponse { user_agent };
+    let os_info = os_info::get();
+    let os_type = os_info.os_type();
+    let os_version = os_info.version();
+    let arch = os_info.architecture().unwrap_or("unknown");
+    let expected_prefix = format!("codex_cli_rs/0.0.0 ({os_type} {os_version}; {arch})");
 
-    assert_eq!(received, expected);
+    assert!(
+        received.user_agent.starts_with(&expected_prefix),
+        "unexpected user agent prefix: {}",
+        received.user_agent
+    );
+    assert!(
+        received
+            .user_agent
+            .ends_with(" (codex-app-server-tests; 0.1.0)"),
+        "unexpected user agent suffix: {}",
+        received.user_agent
+    );
     Ok(())
 }

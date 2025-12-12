@@ -6,7 +6,7 @@
 #############################################
 
 # 模型设置 (Model Settings)
-model = "gpt-5.1-codex-max"           # 最强模型
+model = "gpt-5.2"                    # 最强模型
 model_reasoning_effort = "xhigh"       # 推理力度: minimal/low/medium/high/xhigh
 
 # 权限设置 (Permission Settings)
@@ -22,7 +22,7 @@ disable_response_storage = true        # 不存储响应（节省空间）
 
 # Auto Drive 设置 (Auto Drive Settings)
 [auto_drive]
-model = "gpt-5.1-codex-max"            # Auto Drive 使用的模型
+model = "gpt-5.2"                      # Auto Drive 使用的模型
 model_reasoning_effort = "xhigh"        # Auto Drive 推理力度
 # use_chat_model = true                # 或者跟随聊天模型
 parallel_instances = 1                  # 并行实例数（1-5）：>1 时同模型多实例并发执行

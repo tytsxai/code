@@ -12,6 +12,7 @@ use core_test_support::test_codex::TestCodexBuilder;
 use core_test_support::test_codex::TestCodexHarness;
 use core_test_support::test_codex::test_codex;
 use serde_json::json;
+use serial_test::serial;
 
 fn shell_responses(call_id: &str, command: &str, login: Option<bool>) -> Vec<String> {
     let args = json!({
@@ -70,6 +71,7 @@ fn assert_shell_command_output(output: &str, expected: &str) -> Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[serial(shell_integration)]
 async fn shell_command_works() -> anyhow::Result<()> {
     skip_if_no_network!(Ok(()));
 
@@ -86,6 +88,7 @@ async fn shell_command_works() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[serial(shell_integration)]
 async fn output_with_login() -> anyhow::Result<()> {
     skip_if_no_network!(Ok(()));
 
@@ -102,6 +105,7 @@ async fn output_with_login() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[serial(shell_integration)]
 async fn output_without_login() -> anyhow::Result<()> {
     skip_if_no_network!(Ok(()));
 
@@ -118,6 +122,7 @@ async fn output_without_login() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[serial(shell_integration)]
 async fn multi_line_output_with_login() -> anyhow::Result<()> {
     skip_if_no_network!(Ok(()));
 
@@ -140,6 +145,7 @@ async fn multi_line_output_with_login() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[serial(shell_integration)]
 async fn pipe_output_with_login() -> anyhow::Result<()> {
     skip_if_no_network!(Ok(()));
     skip_if_windows!(Ok(()));
@@ -157,6 +163,7 @@ async fn pipe_output_with_login() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[serial(shell_integration)]
 async fn pipe_output_without_login() -> anyhow::Result<()> {
     skip_if_no_network!(Ok(()));
     skip_if_windows!(Ok(()));

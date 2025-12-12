@@ -17,6 +17,7 @@ use mcp_types::Resource;
 use mcp_types::ResourceTemplate;
 use mcp_types::TextResourceContents;
 use serde_json::json;
+use serial_test::serial;
 
 const RESOURCE_URI: &str = "memo://codex/example-note";
 
@@ -47,6 +48,7 @@ fn init_params() -> InitializeRequestParams {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+#[serial(mcp_test_value)]
 async fn rmcp_client_can_list_and_read_resources() -> anyhow::Result<()> {
     let client = RmcpClient::new_stdio_client(
         stdio_server_bin()?.into(),

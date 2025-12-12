@@ -16,6 +16,7 @@ pub use core_test_support::format_with_current_shell_display_non_login;
 pub use core_test_support::format_with_current_shell_non_login;
 pub use mcp_process::McpProcess;
 pub use mock_model_server::create_mock_chat_completions_server;
+pub use mock_model_server::create_mock_chat_completions_server_repeating_last;
 pub use mock_model_server::create_mock_chat_completions_server_unchecked;
 pub use models_cache::write_models_cache;
 pub use models_cache::write_models_cache_with_models;

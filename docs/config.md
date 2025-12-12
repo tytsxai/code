@@ -62,7 +62,7 @@ Notes:
 The model that Codex should use.
 
 ```toml
-model = "gpt-5.1"  # overrides the default ("gpt-5.1-codex-max" across platforms)
+model = "gpt-5.2"  # overrides the default ("gpt-5.2" across platforms)
 ```
 
 ### model_providers

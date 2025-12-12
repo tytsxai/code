@@ -14,3 +14,4 @@ codex-core = { workspace = true }
 rmcp = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true }
+which = { workspace = true }

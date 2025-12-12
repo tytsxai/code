@@ -525,7 +525,8 @@ impl UnifiedExecSessionManager {
         cancellation_token: &CancellationToken,
         deadline: Instant,
     ) -> Vec<u8> {
-        const POST_EXIT_OUTPUT_GRACE: Duration = Duration::from_millis(50);
+        // Give output readers a bit more time after fast exits to flush trailing chunks.
+        const POST_EXIT_OUTPUT_GRACE: Duration = Duration::from_millis(200);
 
         let mut collected: Vec<u8> = Vec::with_capacity(4096);
         let mut exit_signal_received = cancellation_token.is_cancelled();
